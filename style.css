@@ -800,3 +800,32 @@ footer a {
 .category-tile label {
   color: #171717 !important;
 }
+
+/* Categories panel - white theme */
+.category-sidebar,
+.filters,
+.filter-panel,
+.categories,
+.category-filter {
+  background: #ffffff !important;
+  color: #111111 !important;
+  border-color: #d9d9d9 !important;
+}
+
+.category-sidebar label,
+.filters label,
+.filter-panel label,
+.categories label,
+.category-filter label {
+  color: #111111 !important;
+}
+
+.category-sidebar select,
+.filters select,
+.filter-panel select,
+.categories select,
+.category-filter select {
+  background: #ffffff !important;
+  color: #111111 !important;
+  border-color: #d9d9d9 !important;
+}
