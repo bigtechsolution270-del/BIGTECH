@@ -3,507 +3,145 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>BIGTECH Solution | Phones, Laptops & Gaming in Nicaragua</title>
-<meta name="description" content="Buy original laptops, gaming consoles, drones and accessories from BIGTECH Solution in Managua, Nicaragua. Fast delivery and secure payment.">
+<title>BIGTECH — Power up your everyday</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-<style>
-:root{
-  --blue:#0a67c7;
-  --dark:#111827;
-  --text:#1f2937;
-  --muted:#6b7280;
-  --border:#e5e7eb;
-  --surface:#ffffff;
-}
-*{box-sizing:border-box}
-body{
-  margin:0;
-  font-family:'Poppins',sans-serif;
-  background:#f5f6f8;
-  color:var(--text);
-}
-a{text-decoration:none;color:inherit}
-.container{
-  width:min(1180px,92%);
-  margin:auto;
-}
-.topbar{
-  background:#0f172a;
-  color:#fff;
-  font-size:14px;
-}
-.topbar .container{
-  display:flex;
-  justify-content:space-between;
-  align-items:center;
-  padding:10px 0;
-  gap:12px;
-  flex-wrap:wrap;
-}
-.header{
-  background:#fff;
-  position:sticky;
-  top:0;
-  z-index:100;
-  border-bottom:1px solid var(--border);
-}
-.header-inner{
-  display:flex;
-  align-items:center;
-  justify-content:space-between;
-  padding:16px 0;
-}
-.logo{
-  font-size:34px;
-  font-weight:800;
-  color:var(--blue);
-  letter-spacing:.5px;
-}
-.logo span{color:#f97316}
-.icon-row{
-  display:flex;
-  align-items:center;
-  gap:18px;
-  font-size:22px;
-}
-.icon-btn{
-  width:42px;
-  height:42px;
-  border-radius:50%;
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  border:1px solid var(--border);
-  background:#fff;
-}
-.hero{
-  margin-top:16px;
-}
-.hero-card{
-  position:relative;
-  overflow:hidden;
-  border-radius:24px;
-  background:linear-gradient(135deg,#c40000,#7f1d1d);
-  color:#fff;
-  min-height:320px;
-  display:grid;
-  grid-template-columns:1.1fr .9fr;
-  align-items:center;
-  gap:16px;
-  padding:32px;
-}
-.hero h1{
-  font-size:clamp(32px,5vw,56px);
-  line-height:1.05;
-  margin:0 0 12px;
-}
-.hero p{
-  margin:0 0 22px;
-  color:#fee2e2;
-  max-width:520px;
-}
-.hero-actions{
-  display:flex;
-  gap:12px;
-  flex-wrap:wrap;
-}
-.btn{
-  display:inline-flex;
-  align-items:center;
-  justify-content:center;
-  padding:14px 22px;
-  border-radius:14px;
-  font-weight:700;
-  transition:.2s ease;
-}
-.btn-primary{
-  background:#fff;
-  color:#111827;
-}
-.btn-primary:hover{transform:translateY(-1px)}
-.btn-outline{
-  border:2px solid rgba(255,255,255,.75);
-  color:#fff;
-}
-.hero-image{
-  width:100%;
-  border-radius:20px;
-  box-shadow:0 12px 28px rgba(0,0,0,.25);
-}
-.category-grid{
-  display:grid;
-  grid-template-columns:repeat(4,1fr);
-  gap:14px;
-  margin:26px 0 34px;
-}
-.category{
-  background:#fff;
-  border-radius:18px;
-  padding:22px 16px;
-  text-align:center;
-  border:1px solid var(--border);
-  box-shadow:0 2px 8px rgba(0,0,0,.03);
-}
-.category .emoji{
-  font-size:34px;
-  margin-bottom:10px;
-}
-.section-title{
-  background:var(--blue);
-  color:#fff;
-  text-align:center;
-  padding:16px;
-  border-radius:18px;
-  font-size:clamp(20px,3vw,30px);
-  font-weight:700;
-  margin:8px 0 22px;
-}
-.products{
-  display:grid;
-  grid-template-columns:repeat(4,1fr);
-  gap:18px;
-}
-.card{
-  background:#fff;
-  border-radius:22px;
-  overflow:hidden;
-  border:1px solid var(--border);
-  box-shadow:0 4px 14px rgba(15,23,42,.06);
-  display:flex;
-  flex-direction:column;
-}
-.card img{
-  width:100%;
-  aspect-ratio:1/1;
-  object-fit:cover;
-  display:block;
-}
-.card-body{
-  padding:16px;
-  display:flex;
-  flex-direction:column;
-  gap:8px;
-  flex:1;
-}
-.card h3{
-  margin:0;
-  font-size:18px;
-}
-.card p{
-  margin:0;
-  color:var(--muted);
-  font-size:14px;
-}
-.price{
-  font-weight:800;
-  color:#111827;
-  font-size:18px;
-}
-.price span{
-  display:block;
-  font-size:13px;
-  color:var(--muted);
-  font-weight:600;
-}
-.buy-btn{
-  margin-top:auto;
-  display:block;
-  text-align:center;
-  background:#16a34a;
-  color:#fff;
-  padding:12px;
-  border-radius:12px;
-  font-weight:700;
-}
-.banner{
-  margin:36px 0;
-  border-radius:24px;
-  overflow:hidden;
-  background:#fff;
-  border:1px solid var(--border);
-}
-.banner img{
-  width:100%;
-  display:block;
-}
-.info{
-  margin:42px 0;
-}
-.info-grid{
-  display:grid;
-  grid-template-columns:repeat(3,1fr);
-  gap:18px;
-}
-.info-card{
-  background:#fff;
-  border:1px solid var(--border);
-  border-radius:22px;
-  padding:24px;
-  text-align:center;
-}
-.info-card .icon{
-  font-size:38px;
-  margin-bottom:10px;
-}
-.about{
-  background:#fff;
-  border:1px solid var(--border);
-  border-radius:24px;
-  padding:28px;
-  margin:40px 0;
-}
-.about h2{margin-top:0}
-.footer{
-  background:#0f172a;
-  color:#fff;
-  margin-top:48px;
-}
-.footer .container{
-  display:grid;
-  grid-template-columns:1.2fr 1fr 1fr;
-  gap:28px;
-  padding:38px 0;
-}
-.footer h3{margin-top:0}
-.footer p,.footer a{color:#cbd5e1;font-size:14px}
-.footer-bottom{
-  border-top:1px solid rgba(255,255,255,.12);
-  text-align:center;
-  padding:16px;
-  color:#94a3b8;
-  font-size:13px;
-}
-.whatsapp{
-  position:fixed;
-  right:18px;
-  bottom:18px;
-  width:64px;
-  height:64px;
-  border-radius:50%;
-  background:#25D366;
-  color:#fff;
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  font-size:30px;
-  box-shadow:0 10px 24px rgba(0,0,0,.25);
-  z-index:999;
-}
-@media (max-width:980px){
-  .hero-card{grid-template-columns:1fr}
-  .products{grid-template-columns:repeat(2,1fr)}
-  .info-grid{grid-template-columns:1fr}
-  .footer .container{grid-template-columns:1fr}
-}
-@media (max-width:640px){
-  .logo{font-size:28px}
-  .category-grid{grid-template-columns:repeat(2,1fr)}
-  .products{grid-template-columns:1fr 1fr;gap:14px}
-  .hero-card{padding:22px;min-height:auto}
-  .hero h1{font-size:34px}
-  .card h3{font-size:16px}
-  .section-title{font-size:22px}
-}
-</style>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
 </head>
 <body>
 
-<div class="topbar">
-  <div class="container">
-    <div>📍 Managua, Nicaragua</div>
-    <div>📞 WhatsApp: +505 7890 4496</div>
-  </div>
-</div>
-
-<header class="header">
-  <div class="container header-inner">
-    <div class="icon-btn">☰</div>
-    <div class="logo">BIGTECH<span>.</span></div>
-    <div class="icon-row">
-      <div class="icon-btn">🔍</div>
-      <div class="icon-btn">👤</div>
-      <div class="icon-btn">🛒</div>
+<header class="site">
+  <div class="announce">FREE DELIVERY AROUND MANAGUA &nbsp;·&nbsp; DOOR-TO-DOOR DELIVERY &nbsp;·&nbsp; +505 84883831</div>
+  <div class="wrap navbar">
+    <a href="index.html" class="logo"><span class="bolt">⚡</span>BIGTECH</a>
+    <button class="hamburger" aria-label="Menu">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M3 12h18M3 18h18"/></svg>
+    </button>
+    <nav class="navlinks">
+      <a href="category.html?category=Phones" data-category="Phones">Phones</a>
+      <a href="category.html?category=Tablets" data-category="Tablets">Tablets</a>
+      <a href="category.html?category=Nintendo" data-category="Nintendo">Nintendo</a>
+      <a href="category.html?category=PlayStation" data-category="PlayStation">PlayStation</a>
+      <a href="category.html?category=Xbox" data-category="Xbox">Xbox</a>
+      <a href="category.html">All products</a>
+    </nav>
+    <div class="searchbar">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
+      <input type="text" placeholder="Search phones, tablets, consoles…">
+    </div>
+    <div class="navicons">
+      <a href="cart.html" class="cart-link" aria-label="Cart">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="21" r="1"/><circle cx="19" cy="21" r="1"/><path d="M1 1h4l2.7 13.4a2 2 0 0 0 2 1.6h9.7a2 2 0 0 0 2-1.6L23 6H6"/></svg>
+        <span class="cart-count">0</span>
+      </a>
     </div>
   </div>
 </header>
 
-<section class="hero">
-  <div class="container">
-    <div class="hero-card">
-      <div>
-        <h1>Smart Tech for Everyday Life</h1>
-        <p>Original laptops, gaming consoles, drones and accessories in Managua. Fast delivery across Nicaragua and secure payment in US$ or C$.</p>
-        <div class="hero-actions">
-          <a class="btn btn-primary" href="#featured">Shop Now</a>
-          <a class="btn btn-outline" href="https://wa.me/50578904496" target="_blank">Chat on WhatsApp</a>
-        </div>
-      </div>
-      <img class="hero-image" src="assets/hp1.jpg" alt="HP Laptop">
-    </div>
-  </div>
-</section>
+<main class="wrap">
 
-<div class="container">
-  <div class="category-grid">
-    <div class="category"><div class="emoji">📱</div><strong>Phones</strong></div>
-    <div class="category"><div class="emoji">💻</div><strong>Laptops</strong></div>
-    <div class="category"><div class="emoji">🎮</div><strong>Gaming</strong></div>
-    <div class="category"><div class="emoji">🚁</div><strong>Drones</strong></div>
-  </div>
-</div>
-
-<section id="featured" class="container">
-  <div class="section-title">Featured Products</div>
-  <div class="products">
-
-    <div class="card">
-      <img src="assets/hp2.jpg" alt="HP Spectre x360">
-      <div class="card-body">
-        <h3>HP Spectre x360</h3>
-        <p>Premium 2-in-1 laptop • Touchscreen</p>
-        <div class="price">US$1,299 <span>C$47,500</span></div>
-        <a class="buy-btn" href="https://wa.me/50578904496?text=I%20want%20the%20HP%20Spectre%20x360">Order on WhatsApp</a>
+  <!-- HERO -->
+  <section class="hero">
+    <div class="hero-content">
+      <div class="hero-kicker">◆ BIGTECH — TECH &amp; GAMING STORE</div>
+      <h1>Your tech. <br><span>Your way.</span></h1>
+      <p>Phones, tablets, consoles, games, and more — selected for quality, value, and a great customer experience. Free delivery around Managua.</p>
+      <div class="hero-actions">
+        <a href="category.html" class="btn btn-primary">Shop BIGTECH</a>
+        <a href="#featured" class="btn btn-outline">Today's picks</a>
       </div>
     </div>
+    <div class="hero-orbit"></div>
+  </section>
 
-    <div class="card">
-      <img src="assets/ps5_1.jpg" alt="PlayStation 5">
-      <div class="card-body">
-        <h3>PlayStation 5</h3>
-        <p>4K HDR gaming console • Brand new</p>
-        <div class="price">US$699 <span>C$25,600</span></div>
-        <a class="buy-btn" href="https://wa.me/50578904496?text=I%20want%20the%20PlayStation%205">Order on WhatsApp</a>
-      </div>
+  <div class="trace"></div>
+
+  <!-- CATEGORIES -->
+  <section class="section">
+    <div class="section-head"><h2>Shop by category</h2><a href="category.html">View all →</a></div>
+    <div class="category-grid">
+      <a href="category.html?category=Phones" data-category="Phones" class="category-tile"><span class="icon">📱</span><h3>Phones</h3><small>Latest models</small></a>
+      <a href="category.html?category=Tablets" data-category="Tablets" class="category-tile"><span class="icon">📲</span><h3>Tablets</h3><small>Work &amp; play</small></a>
+      <a href="category.html?category=Laptops" data-category="Laptops" class="category-tile"><span class="icon">💻</span><h3>Laptops</h3><small>For every task</small></a>
+      <a href="category.html?category=Nintendo" data-category="Nintendo" class="category-tile"><span class="icon">🎮</span><h3>Nintendo</h3><small>Switch &amp; games</small></a>
+      <a href="category.html?category=PlayStation" data-category="PlayStation" class="category-tile"><span class="icon">🎮</span><h3>PlayStation</h3><small>PS5 &amp; games</small></a>
+      <a href="category.html?category=Xbox" data-category="Xbox" class="category-tile"><span class="icon">🎮</span><h3>Xbox</h3><small>Series X/S</small></a>
     </div>
+  </section>
 
-    <div class="card">
-      <img src="assets/switch.jpg" alt="Nintendo Switch">
-      <div class="card-body">
-        <h3>Nintendo Switch</h3>
-        <p>Portable gaming console • New stock</p>
-        <div class="price">US$449 <span>C$16,400</span></div>
-        <a class="buy-btn" href="https://wa.me/50578904496?text=I%20want%20the%20Nintendo%20Switch">Order on WhatsApp</a>
-      </div>
+  <!-- FEATURED PRODUCTS -->
+  <section class="section" id="featured" style="padding-top:0">
+    <div class="section-head"><h2>Featured at BIGTECH</h2><a href="category.html">Browse all →</a></div>
+    <div class="pgrid" data-featured-root>
+      <div style="padding:40px 10px;grid-column:1/-1;color:var(--muted)">Loading products…</div>
     </div>
+  </section>
 
-    <div class="card">
-      <img src="assets/dji1.jpg" alt="DJI Mini 5 Pro">
-      <div class="card-body">
-        <h3>DJI Mini 5 Pro</h3>
-        <p>4K camera drone • Extra batteries included</p>
-        <div class="price">US$1,099 <span>C$40,200</span></div>
-        <a class="buy-btn" href="https://wa.me/50578904496?text=I%20want%20the%20DJI%20Mini%205%20Pro">Order on WhatsApp</a>
-      </div>
+  <!-- TRUST -->
+  <section class="trust-grid">
+    <div class="trust-item">
+      <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="1" y="3" width="15" height="13" rx="1"/><path d="M16 8h4l3 3v5h-7z"/><circle cx="5.5" cy="18.5" r="2"/><circle cx="18.5" cy="18.5" r="2"/></svg>
+      <div><h5>Fast dispatch</h5><p>Door-to-door delivery around Managua. We confirm delivery details with you.</p></div>
     </div>
-
-  </div>
-</section>
-
-<section class="container">
-  <div class="banner">
-    <img src="assets/ps5_2.jpg" alt="Gaming Banner">
-  </div>
-</section>
-
-<section class="container">
-  <div class="section-title">Gaming Collection</div>
-  <div class="products">
-
-    <div class="card">
-      <img src="assets/ps4.jpg" alt="PlayStation 4">
-      <div class="card-body">
-        <h3>PlayStation 4</h3>
-        <p>1TB console with two controllers</p>
-        <div class="price">US$349 <span>C$12,800</span></div>
-        <a class="buy-btn" href="https://wa.me/50578904496?text=I%20want%20the%20PlayStation%204">Order on WhatsApp</a>
-      </div>
+    <div class="trust-item">
+      <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M12 2 3 6v6c0 5 4 8.5 9 10 5-1.5 9-5 9-10V6z"/></svg>
+      <div><h5>Product warranty</h5><p>Warranty information is shown with each product.</p></div>
     </div>
-
-    <div class="card">
-      <img src="assets/gow.jpg" alt="God of War PS4">
-      <div class="card-body">
-        <h3>God of War (PS4)</h3>
-        <p>Original PlayStation game</p>
-        <div class="price">US$39 <span>C$1,430</span></div>
-        <a class="buy-btn" href="https://wa.me/50578904496?text=I%20want%20God%20of%20War%20PS4">Order on WhatsApp</a>
-      </div>
+    <div class="trust-item">
+      <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M3 12a9 9 0 1 0 9-9"/><path d="M3 12h6M3 12l3-3M3 12l3 3"/></svg>
+      <div><h5>Easy order support</h5><p>Contact BIGTECH for returns and order support.</p></div>
     </div>
-
-    <div class="card">
-      <img src="assets/ps5_1.jpg" alt="PlayStation 5">
-      <div class="card-body">
-        <h3>PlayStation 5</h3>
-        <p>Next-gen gaming experience</p>
-        <div class="price">US$699 <span>C$25,600</span></div>
-        <a class="buy-btn" href="https://wa.me/50578904496?text=I%20want%20the%20PlayStation%205">Order on WhatsApp</a>
-      </div>
+    <div class="trust-item">
+      <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M21 11.5a8.4 8.4 0 0 1-8.4 8.4 8.3 8.3 0 0 1-4-1L3 20l1.1-5.6a8.3 8.3 0 0 1-1-4A8.4 8.4 0 0 1 11.5 2 8.4 8.4 0 0 1 21 11.5z"/></svg>
+      <div><h5>Talk to a human</h5><p>WhatsApp support at +505 84883831.</p></div>
     </div>
+  </section>
 
-    <div class="card">
-      <img src="assets/switch.jpg" alt="Nintendo Switch">
-      <div class="card-body">
-        <h3>Nintendo Switch</h3>
-        <p>Family and travel gaming console</p>
-        <div class="price">US$449 <span>C$16,400</span></div>
-        <a class="buy-btn" href="https://wa.me/50578904496?text=I%20want%20the%20Nintendo%20Switch">Order on WhatsApp</a>
-      </div>
-    </div>
+  <!-- NEWSLETTER -->
+  <section class="newsletter-panel">
+    <h2>Get BIGTECH deals &amp; new arrivals</h2>
+    <p>Stay updated on phones, tablets, consoles and special offers.</p>
+    <form onsubmit="return false;" class="newsletter-form">
+      <input type="email" placeholder="you@email.com" required>
+      <button class="btn btn-primary" type="submit">Subscribe</button>
+    </form>
+  </section>
 
-  </div>
-</section>
+</main>
 
-<section class="container info">
-  <div class="info-grid">
-    <div class="info-card">
-      <div class="icon">🛡️</div>
-      <h3>Original Products</h3>
-      <p>We sell genuine devices and accessories with warranty support.</p>
-    </div>
-    <div class="info-card">
-      <div class="icon">🚚</div>
-      <h3>Fast Delivery</h3>
-      <p>Quick delivery across Managua and nationwide shipping available.</p>
-    </div>
-    <div class="info-card">
-      <div class="icon">💳</div>
-      <h3>Flexible Payment</h3>
-      <p>Pay in US dollars or córdobas with secure payment options.</p>
-    </div>
-  </div>
-</section>
-
-<section class="container about">
-  <h2>About BIGTECH Solution</h2>
-  <p>BIGTECH Solution is a technology store based in <strong>Managua, Nicaragua</strong>. We specialize in laptops, gaming consoles, drones, phones and premium accessories. Our goal is to provide authentic products, fair prices and excellent customer service for customers across Nicaragua.</p>
-  <p><strong>WhatsApp:</strong> +505 7890 4496</p>
-</section>
-
-<footer class="footer">
-  <div class="container">
+<footer>
+  <div class="wrap footer-grid">
     <div>
-      <h3>BIGTECH Solution</h3>
-      <p>Premium technology store in Managua, Nicaragua. Phones, laptops, gaming consoles, drones and accessories.</p>
+      <a href="index.html" class="logo"><span class="bolt">⚡</span>BIGTECH</a>
+      <p style="color:var(--text-faint); font-size:13px; margin-top:14px; max-width:260px;">Everyday electronics, chosen carefully. Based in Nicaragua, serving Managua, Nicaragua.</p>
     </div>
     <div>
-      <h3>Contact</h3>
-      <p>📍 Managua, Nicaragua</p>
-      <p>📞 +505 7890 4496</p>
-      <p>💬 WhatsApp available</p>
+      <h4>Shop</h4>
+      <a href="category.html?category=Phones" data-category="Phones">Phones</a>
+      <a href="category.html?category=Tablets" data-category="Tablets">Tablets</a>
+      <a href="category.html?category=Nintendo" data-category="Nintendo">Nintendo</a>
+      <a href="category.html">All products</a>
     </div>
     <div>
-      <h3>Quick Links</h3>
-      <p><a href="#featured">Featured Products</a></p>
-      <p><a href="#">Laptops</a></p>
-      <p><a href="#">Gaming</a></p>
-      <p><a href="#">Drones</a></p>
+      <h4>Help</h4>
+      <a href="cart.html">Cart</a>
+      <a href="checkout.html">Checkout</a>
+      <a href="https://wa.me/50584883831" target="_blank">WhatsApp us</a>
+    </div>
+    <div>
+      <h4>Contact</h4>
+      <p>+505 84883831</p>
+      <p>Managua, Nicaragua</p>
     </div>
   </div>
-  <div class="footer-bottom">© 2026 BIGTECH Solution. All rights reserved.</div>
+  <div class="wrap" style="margin-top:24px;padding-top:20px;border-top:1px solid var(--line);display:flex;justify-content:space-between;flex-wrap:wrap;gap:10px;color:var(--faint);font-size:12px">
+    <span>© 2026 BIGTECH. All rights reserved.</span>
+  </div>
 </footer>
 
-<a class="whatsapp" href="https://wa.me/50578904496" target="_blank" aria-label="Chat on WhatsApp">💬</a>
+<a class="whatsapp" href="https://wa.me/50584883831" target="_blank" aria-label="Chat on WhatsApp">◉</a>
 
+<script src="script.js"></script>
+<script src="store.js"></script>
 </body>
 </html>
