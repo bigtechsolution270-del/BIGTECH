@@ -190,19 +190,32 @@
 
     let list = products.slice();
 
-    // Build category checkboxes dynamically from real product categories
+    // Selected categories are the source of truth for filtering, seeded from
+    // the ?category= URL param. This must NOT depend on whether a checkbox
+    // happens to exist in the DOM for that category — if it did, requesting
+    // a category with zero matching products (e.g. no laptops added yet)
+    // would silently fall back to showing every product instead of an
+    // honest "no products" result, which is what previously made clicking
+    // "Laptops" appear to show random Xbox/PlayStation items.
+    let selectedCategories = cat ? [cat.toLowerCase()] : [];
+
+    // Build category checkboxes from real product categories, PLUS the
+    // requested URL category even if no product currently has it, so the
+    // checkbox and the URL always stay in sync.
     const filterGroup = document.querySelector("[data-category-filters]");
     if (filterGroup) {
-      const cats = Array.from(new Set(products.map(p => p.category).filter(Boolean))).sort();
+      const knownCats = new Set(products.map(p => p.category).filter(Boolean));
+      if (cat) knownCats.add(cat);
+      const cats = Array.from(knownCats).sort((a, b) => a.localeCompare(b));
       filterGroup.innerHTML = cats.map(c =>
-        `<label><input type="checkbox" data-filter="category" value="${escapeAttr(c)}" ${cat && cat.toLowerCase() === c.toLowerCase() ? "checked" : ""}> ${escapeHtml(c)}</label>`
+        `<label><input type="checkbox" data-filter="category" value="${escapeAttr(c)}" ${selectedCategories.includes(c.toLowerCase()) ? "checked" : ""}> ${escapeHtml(c)}</label>`
       ).join("") || `<p style="color:var(--faint);font-size:12px">No categories yet</p>`;
     }
 
     function applyFilters() {
-      const selected = Array.from(document.querySelectorAll("[data-filter='category']:checked")).map(el => el.value.toLowerCase());
+      selectedCategories = Array.from(document.querySelectorAll("[data-filter='category']:checked")).map(el => el.value.toLowerCase());
       list = products.filter(p => {
-        const matchesCategory = !selected.length || selected.includes(String(p.category || "").toLowerCase());
+        const matchesCategory = !selectedCategories.length || selectedCategories.includes(String(p.category || "").toLowerCase());
         const matchesQuery = !q || `${p.name} ${p.category} ${p.description}`.toLowerCase().includes(q);
         return matchesCategory && matchesQuery;
       });
@@ -249,7 +262,7 @@
 
     document.querySelectorAll("[data-product-name]").forEach(e => e.textContent = p.name);
     document.querySelectorAll("[data-product-price]").forEach(e => e.textContent = money(p.price));
-    document.querySelectorAll("[data-product-desc]").forEach(e => e.textContent = p.description || `Genuine ${p.name} from BIGTECH. Door-to-door delivery is available, with free delivery around Managua. Contact +505 84883831 for availability and order confirmation.`);
+    document.querySelectorAll("[data-product-desc]").forEach(e => e.textContent = p.description || `Genuine ${p.name} from BIGTECH. Door-to-door delivery is available, with free delivery around Managua. Contact +505 7890 4496 for availability and order confirmation.`);
     document.querySelectorAll("[data-product-category]").forEach(e => { e.textContent = p.category || "BIGTECH"; e.href = `category.html?category=${encodeURIComponent(p.category || "")}`; });
     document.querySelectorAll("[data-product-stock]").forEach(e => {
       e.innerHTML = outOfStock ? "Out of stock" : `<span class="dot"></span> In stock${p.stock ? ` (${p.stock} left)` : ""}`;
@@ -371,7 +384,7 @@
       save(CART_KEY, cart);
       updateBadges();
 
-      window.open(`https://wa.me/50584883831?text=${msg}`, "_blank");
+      window.open(`https://wa.me/50578904496?text=${msg}`, "_blank");
       if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = originalLabel; }
       toast("Order placed! Confirm the details on WhatsApp.");
       setTimeout(() => { location.href = "index.html"; }, 1500);

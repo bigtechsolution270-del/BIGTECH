@@ -93,6 +93,8 @@ if (productCount <= 1) {
     { name: "iPhone 15 Pro Max 256GB", description: "Genuine iPhone 15 Pro Max, 256GB storage. Comes with BIGTECH warranty support.", price: 28999, stock: 8, category: "Phones", image: "", featured: 1 },
     { name: "Samsung Galaxy S24 Ultra 512GB", description: "Samsung's flagship with 512GB storage and S Pen included.", price: 24999, stock: 6, category: "Phones", image: "", featured: 1 },
     { name: "iPad 10th Generation", description: "10th generation iPad, great for work, study and entertainment.", price: 13999, stock: 10, category: "Tablets", image: "", featured: 1 },
+    { name: "HP Pavilion x360", description: "Brand new HP Pavilion x360 laptop, convertible 2-in-1 design.", price: 24999, stock: 5, category: "Laptops", image: "", featured: 1 },
+    { name: "Lenovo IdeaPad Slim 3", description: "Everyday Lenovo laptop with fast SSD storage, great for work and study.", price: 19999, stock: 6, category: "Laptops", image: "", featured: 0 },
     { name: "Nintendo Switch OLED", description: "Nintendo Switch OLED model with vivid 7-inch screen.", price: 10999, stock: 12, category: "Nintendo", image: "", featured: 1 },
     { name: "PlayStation 5 Digital Edition", description: "Sony PlayStation 5 Digital Edition console.", price: 17299, stock: 5, category: "PlayStation", image: "", featured: 1 },
     { name: "Xbox Series X 1TB", description: "Microsoft Xbox Series X, 1TB storage, 4K gaming.", price: 16999, stock: 7, category: "Xbox", image: "", featured: 1 }
