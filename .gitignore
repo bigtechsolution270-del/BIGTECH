@@ -1,0 +1,5 @@
+node_modules/
+.env
+bigtech.db
+bigtech.db-shm
+bigtech.db-wal

@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>BIGTECH - Manage Categories</title>
+
+  <style>
+    * { box-sizing: border-box; }
+    body { margin: 0; font-family: Arial, sans-serif; background: #f5f6f8; color: #111; }
+    header { background: #111; color: white; padding: 18px 30px; display: flex; justify-content: space-between; align-items: center; }
+    header h2 { margin: 0; }
+    .back-btn { background: white; color: #111; border: none; padding: 10px 16px; border-radius: 6px; cursor: pointer; }
+    .container { max-width: 700px; margin: 40px auto; padding: 0 20px; }
+    .panel { background: white; padding: 30px; border-radius: 12px; box-shadow: 0 2px 12px rgba(0,0,0,0.08); }
+    h1 { margin-top: 0; }
+    .add-row { display: flex; gap: 10px; margin-bottom: 25px; }
+    .add-row input { flex: 1; padding: 12px; border: 1px solid #ccc; border-radius: 6px; font-size: 15px; }
+    .add-row button { padding: 12px 20px; border: none; border-radius: 6px; background: #111; color: #fff; font-weight: bold; cursor: pointer; }
+    ul { list-style: none; padding: 0; margin: 0; }
+    li { display: flex; justify-content: space-between; align-items: center; padding: 14px 4px; border-bottom: 1px solid #eee; }
+    li:last-child { border-bottom: none; }
+    .delete { background: #e53935; color: white; border: none; padding: 8px 14px; border-radius: 6px; cursor: pointer; font-weight: bold; }
+    .empty { text-align: center; padding: 40px; color: #777; }
+    #message { margin-top: 12px; font-weight: bold; }
+    .guard { max-width: 400px; margin: 100px auto; text-align: center; }
+  </style>
+</head>
+
+<body>
+
+  <header>
+    <h2>BIGTECH Admin</h2>
+    <button class="back-btn" onclick="location.href='admin.html'">Back to Dashboard</button>
+  </header>
+
+  <div id="guard" class="guard" style="display:none">
+    <p>You need to log in as admin first.</p>
+    <button class="back-btn" style="background:#111;color:#fff" onclick="location.href='admin.html'">Go to login</button>
+  </div>
+
+  <div id="content" class="container" style="display:none">
+    <div class="panel">
+      <h1>Manage Categories</h1>
+
+      <div class="add-row">
+        <input type="text" id="newCategory" placeholder="New category name (e.g. Laptops)">
+        <button onclick="addCategory()">Add</button>
+      </div>
+
+      <ul id="categoryList"><li class="empty">Loading categories…</li></ul>
+      <div id="message"></div>
+    </div>
+  </div>
+
+  <script>
+    const API = "/api/categories";
+
+    function getToken() {
+      return localStorage.getItem("bigtechAdminToken") || "";
+    }
+
+    if (!getToken()) {
+      document.getElementById("guard").style.display = "block";
+    } else {
+      document.getElementById("content").style.display = "block";
+      loadCategories();
+    }
+
+    async function loadCategories() {
+      const list = document.getElementById("categoryList");
+      try {
+        const res = await fetch(API);
+        if (!res.ok) throw new Error("Failed to load categories");
+        const categories = await res.json();
+
+        if (!categories.length) {
+          list.innerHTML = `<li class="empty">No categories yet. Add one above.</li>`;
+          return;
+        }
+
+        list.innerHTML = categories.map(c => `
+          <li>
+            <span>${escapeHtml(c.name)}</span>
+            <button class="delete" onclick="deleteCategory(${c.id})">Delete</button>
+          </li>
+        `).join("");
+      } catch (err) {
+        list.innerHTML = `<li class="empty">Unable to load categories.</li>`;
+      }
+    }
+
+    async function addCategory() {
+      const input = document.getElementById("newCategory");
+      const message = document.getElementById("message");
+      const name = input.value.trim();
+      message.textContent = "";
+
+      if (!name) { message.textContent = "Enter a category name."; return; }
+
+      try {
+        const res = await fetch(API, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": "Bearer " + getToken()
+          },
+          body: JSON.stringify({ name })
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || "Failed to add category");
+
+        input.value = "";
+        loadCategories();
+      } catch (err) {
+        message.textContent = err.message;
+      }
+    }
+
+    async function deleteCategory(id) {
+      if (!confirm("Delete this category? Products keep their existing category text.")) return;
+
+      try {
+        const res = await fetch(`${API}/${id}`, {
+          method: "DELETE",
+          headers: { "Authorization": "Bearer " + getToken() }
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || "Delete failed");
+        loadCategories();
+      } catch (err) {
+        alert(err.message);
+      }
+    }
+
+    function escapeHtml(value) {
+      const div = document.createElement("div");
+      div.textContent = value;
+      return div.innerHTML;
+    }
+  </script>
+
+</body>
+</html>

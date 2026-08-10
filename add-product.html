@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>BIGTECH - Add Product</title>
+
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      background: #f5f6f8;
+      color: #111;
+    }
+
+    header {
+      background: #111;
+      color: white;
+      padding: 18px 30px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    header h2 {
+      margin: 0;
+    }
+
+    .back-btn {
+      background: white;
+      color: #111;
+      border: none;
+      padding: 10px 16px;
+      border-radius: 6px;
+      cursor: pointer;
+    }
+
+    .container {
+      max-width: 700px;
+      margin: 40px auto;
+      background: white;
+      padding: 30px;
+      border-radius: 12px;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+    }
+
+    h1 {
+      margin-top: 0;
+    }
+
+    label {
+      display: block;
+      margin-top: 18px;
+      margin-bottom: 7px;
+      font-weight: bold;
+    }
+
+    input,
+    textarea,
+    select {
+      width: 100%;
+      padding: 12px;
+      border: 1px solid #ccc;
+      border-radius: 6px;
+      font-size: 15px;
+    }
+
+    textarea {
+      min-height: 120px;
+      resize: vertical;
+    }
+
+    .submit-btn {
+      width: 100%;
+      margin-top: 25px;
+      padding: 14px;
+      border: none;
+      border-radius: 6px;
+      background: #111;
+      color: white;
+      font-size: 16px;
+      cursor: pointer;
+    }
+
+    .submit-btn:hover {
+      opacity: 0.9;
+    }
+
+    .submit-btn:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+
+    #message {
+      margin-top: 15px;
+      font-weight: bold;
+    }
+
+    .guard {
+      max-width: 400px;
+      margin: 100px auto;
+      text-align: center;
+    }
+
+    .hint {
+      color: #777;
+      font-size: 12px;
+      margin-top: 4px;
+    }
+  </style>
+</head>
+
+<body>
+
+  <header>
+    <h2>BIGTECH Admin</h2>
+
+    <button class="back-btn" onclick="location.href='manage-product.html'">
+      Back to Products
+    </button>
+  </header>
+
+  <div id="guard" class="guard" style="display:none">
+    <p>You need to log in as admin first.</p>
+    <button class="back-btn" style="background:#111;color:#fff" onclick="location.href='admin.html'">Go to login</button>
+  </div>
+
+  <div id="formContainer" class="container" style="display:none">
+
+    <h1 id="formTitle">Add Product</h1>
+
+    <form id="productForm">
+
+      <label for="name">Product Name</label>
+      <input
+        type="text"
+        id="name"
+        name="name"
+        placeholder="Enter product name"
+        required
+      >
+
+      <label for="description">Description</label>
+      <textarea
+        id="description"
+        name="description"
+        placeholder="Enter product description"
+        required
+      ></textarea>
+
+      <label for="price">Price</label>
+      <input
+        type="number"
+        id="price"
+        name="price"
+        placeholder="Enter price"
+        min="0"
+        step="0.01"
+        required
+      >
+
+      <label for="stock">Stock</label>
+      <input
+        type="number"
+        id="stock"
+        name="stock"
+        placeholder="Enter stock quantity"
+        min="0"
+        required
+      >
+
+      <label for="category">Category</label>
+      <input
+        type="text"
+        id="category"
+        name="category"
+        placeholder="Enter or pick a category"
+        list="categoryOptions"
+        required
+      >
+      <datalist id="categoryOptions"></datalist>
+      <div class="hint">Pick an existing category or type a new one — it will be added automatically.</div>
+
+      <label for="image">Image URL</label>
+      <input
+        type="text"
+        id="image"
+        name="image"
+        placeholder="Enter product image URL (optional — a fallback icon is used if left blank)"
+      >
+
+      <label style="display:flex;align-items:center;gap:8px;margin-top:20px;font-weight:normal">
+        <input type="checkbox" id="featured" name="featured" style="width:auto">
+        Feature this product on the homepage
+      </label>
+
+      <button type="submit" class="submit-btn" id="submitBtn">
+        Add Product
+      </button>
+
+      <div id="message"></div>
+
+    </form>
+
+  </div>
+
+  <script>
+    const API = "/api/products";
+    const CATEGORIES_API = "/api/categories";
+
+    function getToken() {
+      return localStorage.getItem("bigtechAdminToken") || "";
+    }
+
+    const params = new URLSearchParams(location.search);
+    const editId = params.get("id");
+
+    if (!getToken()) {
+      document.getElementById("guard").style.display = "block";
+    } else {
+      document.getElementById("formContainer").style.display = "block";
+      init();
+    }
+
+    async function init() {
+      loadCategoryOptions();
+
+      if (editId) {
+        document.getElementById("formTitle").textContent = "Edit Product";
+        document.title = "BIGTECH - Edit Product";
+        document.getElementById("submitBtn").textContent = "Save Changes";
+        await loadExistingProduct(editId);
+      }
+    }
+
+    async function loadCategoryOptions() {
+      try {
+        const res = await fetch(CATEGORIES_API);
+        if (!res.ok) return;
+        const categories = await res.json();
+        const list = document.getElementById("categoryOptions");
+        list.innerHTML = categories.map(c => `<option value="${escapeHtml(c.name)}"></option>`).join("");
+      } catch (err) {
+        // Non-fatal — the category field still works as free text.
+      }
+    }
+
+    async function loadExistingProduct(id) {
+      const message = document.getElementById("message");
+      try {
+        const res = await fetch(`${API}/${id}`);
+        if (!res.ok) throw new Error("Product not found");
+        const product = await res.json();
+
+        document.getElementById("name").value = product.name || "";
+        document.getElementById("description").value = product.description || "";
+        document.getElementById("price").value = product.price ?? "";
+        document.getElementById("stock").value = product.stock ?? "";
+        document.getElementById("category").value = product.category || "";
+        document.getElementById("image").value = product.image || "";
+        document.getElementById("featured").checked = !!product.featured;
+      } catch (err) {
+        message.style.color = "#d00";
+        message.textContent = "Could not load this product for editing: " + err.message;
+      }
+    }
+
+    document.getElementById("productForm").addEventListener("submit", async function(event) {
+      event.preventDefault();
+
+      const message = document.getElementById("message");
+      const submitBtn = document.getElementById("submitBtn");
+      message.style.color = "#111";
+      message.textContent = "";
+
+      const product = {
+        name: document.getElementById("name").value.trim(),
+        description: document.getElementById("description").value.trim(),
+        price: Number(document.getElementById("price").value),
+        stock: Number(document.getElementById("stock").value),
+        category: document.getElementById("category").value.trim(),
+        image: document.getElementById("image").value.trim(),
+        featured: document.getElementById("featured").checked ? 1 : 0
+      };
+
+      submitBtn.disabled = true;
+      submitBtn.textContent = editId ? "Saving…" : "Adding…";
+
+      try {
+        const response = await fetch(editId ? `${API}/${editId}` : API, {
+          method: editId ? "PUT" : "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": "Bearer " + getToken()
+          },
+          body: JSON.stringify(product)
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+          throw new Error(data.error || "Failed to save product");
+        }
+
+        message.style.color = "#0a0";
+        message.textContent = editId ? "Product updated successfully." : "Product added successfully.";
+
+        if (editId) {
+          setTimeout(() => location.href = "manage-product.html", 900);
+        } else {
+          document.getElementById("productForm").reset();
+          loadCategoryOptions();
+        }
+
+      } catch (error) {
+        message.style.color = "#d00";
+        message.textContent = error.message;
+      } finally {
+        submitBtn.disabled = false;
+        submitBtn.textContent = editId ? "Save Changes" : "Add Product";
+      }
+    });
+
+    function escapeHtml(value) {
+      const div = document.createElement("div");
+      div.textContent = value;
+      return div.innerHTML;
+    }
+  </script>
+
+</body>
+</html>

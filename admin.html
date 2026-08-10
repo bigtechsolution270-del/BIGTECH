@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>BIGTECH Admin</title>
+
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      background: #f5f6f8;
+      color: #111;
+    }
+
+    header {
+      background: #111;
+      color: white;
+      padding: 20px 30px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    header h1 {
+      margin: 0;
+    }
+
+    button {
+      border: none;
+      padding: 11px 18px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-weight: bold;
+    }
+
+    .logout {
+      background: #fff;
+      color: #111;
+    }
+
+    .container {
+      max-width: 1200px;
+      margin: 30px auto;
+      padding: 0 20px;
+    }
+
+    .login-box {
+      max-width: 400px;
+      margin: 80px auto;
+      background: white;
+      padding: 30px;
+      border-radius: 12px;
+      box-shadow: 0 5px 25px rgba(0,0,0,0.08);
+    }
+
+    .login-box h2 {
+      margin-top: 0;
+      text-align: center;
+    }
+
+    input {
+      width: 100%;
+      padding: 13px;
+      margin: 8px 0;
+      border: 1px solid #ddd;
+      border-radius: 6px;
+    }
+
+    .login-btn {
+      width: 100%;
+      background: #111;
+      color: white;
+      margin-top: 10px;
+    }
+
+    #error {
+      color: #d00;
+      margin-top: 10px;
+      text-align: center;
+    }
+
+    .dashboard {
+      display: none;
+    }
+
+    .cards {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 20px;
+    }
+
+    .card {
+      background: white;
+      padding: 25px;
+      border-radius: 12px;
+      box-shadow: 0 3px 15px rgba(0,0,0,0.06);
+    }
+
+    .card h3 {
+      margin: 0 0 10px;
+      color: #666;
+      font-size: 15px;
+    }
+
+    .card strong {
+      font-size: 30px;
+    }
+  </style>
+</head>
+
+<body>
+
+  <!-- LOGIN -->
+  <div id="loginPage" class="login-box">
+    <h2>BIGTECH Admin</h2>
+
+    <input
+      type="text"
+      id="username"
+      placeholder="Username"
+    >
+
+    <input
+      type="password"
+      id="password"
+      placeholder="Password"
+    >
+
+    <button class="login-btn" onclick="login()">
+      Login
+    </button>
+
+    <div id="error"></div>
+  </div>
+
+
+  <!-- DASHBOARD -->
+  <div id="dashboardPage" class="dashboard">
+
+    <header>
+      <h1>BIGTECH Admin</h1>
+      <button class="logout" onclick="logout()">Logout</button>
+    </header>
+
+    <div class="container">
+
+      <h2>Dashboard</h2>
+
+      <div class="cards">
+
+        <div class="card">
+          <h3>Products</h3>
+          <strong id="products">0</strong>
+        </div>
+
+        <div class="card">
+          <h3>Categories</h3>
+          <strong id="categories">0</strong>
+        </div>
+
+        <div class="card">
+          <h3>Orders</h3>
+          <strong id="orders">0</strong>
+        </div>
+
+        <div class="card">
+          <h3>Pending Orders</h3>
+          <strong id="pendingOrders">0</strong>
+        </div>
+
+        <div class="card">
+          <h3>Sales</h3>
+          <strong id="sales">0</strong>
+        </div>
+
+        <div class="card">
+          <h3>Low Stock</h3>
+          <strong id="lowStock">0</strong>
+        </div>
+
+      </div>
+
+    </div>
+
+    <div class="container">
+      <div class="admin-actions">
+        <h2>Management</h2>
+
+        <div class="action-buttons">
+            <button onclick="location.href='manage-product.html'">
+                Manage Products
+            </button>
+
+            <button onclick="location.href='admin-categories.html'">
+                Manage Categories
+            </button>
+
+            <button onclick="location.href='index.html'">
+                View Store
+            </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+
+    async function login() {
+
+      const username =
+        document.getElementById("username").value;
+
+      const password =
+        document.getElementById("password").value;
+
+      const error =
+        document.getElementById("error");
+
+      error.textContent = "";
+
+      try {
+
+        const response = await fetch("/api/admin/login", {
+          method: "POST",
+
+          headers: {
+            "Content-Type": "application/json"
+          },
+
+          body: JSON.stringify({
+            username,
+            password
+          })
+        });
+
+        const data = await response.json();
+
+        if (!response.ok || !data.success) {
+          error.textContent =
+            data.error || "Login failed";
+          return;
+        }
+
+        localStorage.setItem("bigtechAdminToken", data.token);
+
+        showDashboard();
+
+      } catch (err) {
+
+        error.textContent =
+          "Cannot connect to BIGTECH server.";
+
+      }
+    }
+
+
+    async function showDashboard() {
+
+      const token =
+        localStorage.getItem("bigtechAdminToken");
+
+      if (!token) return;
+
+      document.getElementById("loginPage").style.display = "none";
+
+      document.getElementById("dashboardPage").style.display = "block";
+
+      try {
+
+        const response = await fetch(
+          "/api/admin/dashboard",
+          {
+            headers: {
+              "Authorization": "Bearer " + token
+            }
+          }
+        );
+
+        const data = await response.json();
+
+        if (!response.ok || !data.success) {
+          logout();
+          return;
+        }
+
+        const dashboard = data.dashboard;
+
+        document.getElementById("products").textContent =
+          dashboard.products || 0;
+
+        document.getElementById("categories").textContent =
+          dashboard.categories || 0;
+
+        document.getElementById("orders").textContent =
+          dashboard.orders || 0;
+
+        document.getElementById("pendingOrders").textContent =
+          dashboard.pendingOrders || 0;
+
+        document.getElementById("sales").textContent =
+          "C$" + Number(dashboard.sales || 0).toLocaleString("en-US");
+
+        document.getElementById("lowStock").textContent =
+          dashboard.lowStock || 0;
+
+      } catch (err) {
+
+        console.error(err);
+
+      }
+    }
+
+
+    function logout() {
+
+      localStorage.removeItem("bigtechAdminToken");
+
+      document.getElementById("dashboardPage").style.display = "none";
+
+      document.getElementById("loginPage").style.display = "block";
+
+    }
+
+
+    showDashboard();
+
+  </script>
+
+</body>
+</html>
