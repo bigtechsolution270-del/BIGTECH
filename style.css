@@ -784,3 +784,19 @@ footer a {
     min-height: auto !important;
   }
 }
+/* Categories - clean light style */
+.category-grid {
+  background: #ffffff !important;
+}
+
+.category-tile {
+  background: #ffffff !important;
+  color: #171717 !important;
+  border: 1px solid #dddddd !important;
+  box-shadow: none !important;
+}
+
+.category-tile h3,
+.category-tile label {
+  color: #171717 !important;
+}
