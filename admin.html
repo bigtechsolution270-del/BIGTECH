@@ -206,6 +206,20 @@
         </div>
       </div>
     </div>
+
+    <div class="container">
+      <div class="admin-actions">
+        <h2>Change Password</h2>
+
+        <form id="changePasswordForm" style="max-width:420px">
+          <input type="password" id="currentPassword" placeholder="Current password" required>
+          <input type="password" id="newPassword" placeholder="New password (min 8 characters)" required>
+          <input type="password" id="confirmPassword" placeholder="Confirm new password" required>
+          <button type="submit" class="login-btn" style="margin-top:14px">Update Password</button>
+          <div id="passwordMessage" style="margin-top:10px;font-weight:bold"></div>
+        </form>
+      </div>
+    </div>
   </div>
 
   <script>
@@ -314,6 +328,64 @@
 
       }
     }
+
+
+    document.getElementById("changePasswordForm").addEventListener("submit", async function(event) {
+      event.preventDefault();
+
+      const currentPassword = document.getElementById("currentPassword").value;
+      const newPassword = document.getElementById("newPassword").value;
+      const confirmPassword = document.getElementById("confirmPassword").value;
+      const message = document.getElementById("passwordMessage");
+      const submitBtn = event.target.querySelector("button[type='submit']");
+
+      message.style.color = "#111";
+      message.textContent = "";
+
+      if (newPassword !== confirmPassword) {
+        message.style.color = "#d00";
+        message.textContent = "New password and confirmation do not match.";
+        return;
+      }
+
+      if (newPassword.length < 8) {
+        message.style.color = "#d00";
+        message.textContent = "New password must be at least 8 characters.";
+        return;
+      }
+
+      const token = localStorage.getItem("bigtechAdminToken");
+      submitBtn.disabled = true;
+      submitBtn.textContent = "Updating…";
+
+      try {
+        const response = await fetch("/api/admin/change-password", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": "Bearer " + token
+          },
+          body: JSON.stringify({ currentPassword, newPassword })
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+          throw new Error(data.error || "Could not update password");
+        }
+
+        message.style.color = "#0a0";
+        message.textContent = "Password updated. Use your new password next time you log in.";
+        event.target.reset();
+
+      } catch (err) {
+        message.style.color = "#d00";
+        message.textContent = err.message;
+      } finally {
+        submitBtn.disabled = false;
+        submitBtn.textContent = "Update Password";
+      }
+    });
 
 
     function logout() {

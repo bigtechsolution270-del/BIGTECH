@@ -204,6 +204,46 @@ app.get("/api/admin/me", authenticateAdmin, (req, res) => {
   });
 });
 
+// CHANGE ADMIN PASSWORD
+app.post("/api/admin/change-password", authenticateAdmin, (req, res) => {
+  const { currentPassword, newPassword } = req.body;
+
+  if (!currentPassword || !newPassword) {
+    return res.status(400).json({
+      error: "Current password and new password are required"
+    });
+  }
+
+  if (String(newPassword).length < 8) {
+    return res.status(400).json({
+      error: "New password must be at least 8 characters"
+    });
+  }
+
+  const admin = db
+    .prepare("SELECT * FROM admins WHERE id = ?")
+    .get(req.admin.id);
+
+  if (!admin) {
+    return res.status(404).json({ error: "Admin account not found" });
+  }
+
+  const validPassword = bcrypt.compareSync(currentPassword, admin.password);
+
+  if (!validPassword) {
+    return res.status(401).json({ error: "Current password is incorrect" });
+  }
+
+  const newHash = bcrypt.hashSync(newPassword, 12);
+
+  db.prepare("UPDATE admins SET password = ? WHERE id = ?").run(newHash, admin.id);
+
+  res.json({
+    success: true,
+    message: "Password updated successfully"
+  });
+});
+
 // DASHBOARD
 app.get("/api/admin/dashboard", authenticateAdmin, (req, res) => {
   const productCount = db
