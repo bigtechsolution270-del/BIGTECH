@@ -127,41 +127,30 @@
   function escapeAttr(str) {
     return String(str ?? "").replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;");
   }
-  const BRAND_KEYWORDS = [
-    "Apple", "Samsung", "Sony", "Microsoft", "Nintendo", "Google", "Lenovo",
-    "HP", "Dell", "ASUS", "Acer", "Xiaomi", "Motorola", "Huawei", "Amazon"
-  ];
-  function brandFor(p) {
-    const haystack = `${p.name || ""}`;
-    const found = BRAND_KEYWORDS.find(b => haystack.toLowerCase().includes(b.toLowerCase()));
-    if (found) return found;
-    // Fall back to platform-based brand guesses for consoles/accessories
-    const cat = String(p.category || "").toLowerCase();
-    if (cat === "playstation") return "Sony";
-    if (cat === "xbox") return "Microsoft";
-    if (cat === "nintendo") return "Nintendo";
-    return "BIGTECH";
-  }
-
   function escapeHtml(str) {
     return String(str ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
   }
 
-  // Product card: image, name and price only — the whole card is a single
-  // link to the product page. No buttons live inside the card itself.
   function productCard(p) {
     const outOfStock = p.stock !== undefined && Number(p.stock) <= 0;
-    return `<a href="product.html?id=${p.id}" class="product-card" data-product-id="${p.id}">
-      <div class="card-media">
+    const lowStock = !outOfStock && p.stock !== undefined && Number(p.stock) > 0 && Number(p.stock) <= 5;
+    return `<article class="product-card" data-product-id="${p.id}">
+      <a href="product.html?id=${p.id}" class="card-media">
         ${mediaFor(p)}
-      </div>
+        <div class="card-badges">
+          ${outOfStock ? '<span class="badge sale">Out of stock</span>' : (lowStock ? '<span class="badge">Low stock</span>' : '<span class="badge stock"><span class="dot"></span>In stock</span>')}
+        </div>
+      </a>
       <div class="card-body">
         <div class="card-meta">${escapeHtml(p.category || "BIGTECH")}</div>
-        <h3>${escapeHtml(p.name || "Unnamed product")}</h3>
+        <h3><a href="product.html?id=${p.id}">${escapeHtml(p.name || "Unnamed product")}</a></h3>
         <div class="card-price">${money(p.price)}</div>
-        ${outOfStock ? '<span class="card-out-of-stock">Out of stock</span>' : ""}
+        <div class="card-actions">
+          <button class="btn btn-primary" data-action="add-cart" data-id="${p.id}" ${outOfStock ? "disabled" : ""}>${outOfStock ? "Out of stock" : "Add to cart"}</button>
+          <a class="btn btn-outline" href="product.html?id=${p.id}">View</a>
+        </div>
       </div>
-    </a>`;
+    </article>`;
   }
 
   function renderGrid(root, list) {
@@ -171,6 +160,13 @@
       return;
     }
     root.innerHTML = list.map(productCard).join("");
+    root.querySelectorAll("[data-action='add-cart']").forEach(btn => {
+      btn.addEventListener("click", e => {
+        e.preventDefault();
+        e.stopPropagation();
+        add(btn.dataset.id);
+      });
+    });
   }
 
   // ---------- featured grid (index.html) ----------
@@ -268,7 +264,6 @@
     document.querySelectorAll("[data-product-price]").forEach(e => e.textContent = money(p.price));
     document.querySelectorAll("[data-product-desc]").forEach(e => e.textContent = p.description || `Genuine ${p.name} from BIGTECH. Door-to-door delivery is available, with free delivery around Managua. Contact +505 7890 4496 for availability and order confirmation.`);
     document.querySelectorAll("[data-product-category]").forEach(e => { e.textContent = p.category || "BIGTECH"; e.href = `category.html?category=${encodeURIComponent(p.category || "")}`; });
-    document.querySelectorAll("[data-product-brand]").forEach(e => { e.textContent = brandFor(p); });
     document.querySelectorAll("[data-product-stock]").forEach(e => {
       e.innerHTML = outOfStock ? "Out of stock" : `<span class="dot"></span> In stock${p.stock ? ` (${p.stock} left)` : ""}`;
       e.classList.toggle("stock", !outOfStock);
@@ -280,24 +275,16 @@
       b.textContent = outOfStock ? "Out of stock" : "Add to cart";
       b.onclick = () => add(p.id, getQty());
     });
+    document.querySelectorAll("[data-buy-product]").forEach(b => {
+      b.disabled = outOfStock;
+      b.onclick = () => { add(p.id, getQty()); location.href = "cart.html"; };
+    });
 
     function getQty() {
-      const stepper = document.querySelector(".pdp-qty-row .qty-stepper span, [data-product-qty]");
+      const stepper = document.querySelector(".pdp-actions .qty-stepper span, [data-product-qty]");
       const n = parseInt(stepper?.textContent, 10);
       return Number.isFinite(n) && n > 0 ? n : 1;
     }
-
-    // Description / Reviews tabs
-    const tabButtons = document.querySelectorAll("[data-tab]");
-    tabButtons.forEach(btn => {
-      btn.addEventListener("click", () => {
-        tabButtons.forEach(b => b.classList.remove("active"));
-        btn.classList.add("active");
-        document.querySelectorAll("[data-tab-panel]").forEach(panel => {
-          panel.hidden = panel.dataset.tabPanel !== btn.dataset.tab;
-        });
-      });
-    });
   }
 
   // ---------- cart page ----------
