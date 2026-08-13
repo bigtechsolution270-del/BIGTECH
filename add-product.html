@@ -112,6 +112,33 @@
       margin-top: 4px;
     }
 
+    .image-views-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+    }
+
+    .image-view-block {
+      background: #fff;
+    }
+
+    .image-view-label {
+      font-weight: bold;
+      font-size: 13px;
+      margin-bottom: 7px;
+      color: #333;
+    }
+
+    .required-star {
+      color: #d00;
+    }
+
+    @media (max-width: 600px) {
+      .image-views-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
     .image-upload-box {
       margin-top: 6px;
       border: 2px dashed #ccc;
@@ -267,35 +294,76 @@
       <datalist id="categoryOptions"></datalist>
       <div class="hint">Pick an existing category or type a new one — it will be added automatically.</div>
 
-      <label for="image">Product Image</label>
+      <label>Product Images (up to 4 views)</label>
+      <div class="hint" style="margin-bottom:14px">Front view is the main image shown everywhere on the site. Back, side, and close-up are optional — add as many as you have for a richer gallery on the product page.</div>
 
-      <div class="image-upload-box">
-        <div id="imagePreviewWrap" class="image-preview" style="display:none">
-          <img id="imagePreview" src="" alt="Preview">
+      <div class="image-views-grid">
+
+        <div class="image-view-block">
+          <div class="image-view-label">Front view <span class="required-star">*</span></div>
+          <div class="image-upload-box">
+            <div id="imagePreviewWrap-front" class="image-preview" style="display:none">
+              <img id="imagePreview-front" src="" alt="Preview">
+            </div>
+            <input type="file" id="imageFile-front" accept="image/*" style="display:none">
+            <div class="image-upload-actions">
+              <button type="button" id="uploadImageBtn-front" class="upload-btn">📷 Upload Image</button>
+              <button type="button" id="removeImageBtn-front" class="remove-btn" style="display:none">🗑 Remove</button>
+            </div>
+            <div id="uploadStatus-front" class="hint"></div>
+          </div>
+          <input type="text" id="image-front" name="image" placeholder="...or paste an image URL directly" style="margin-top:10px">
         </div>
 
-        <input type="file" id="imageFile" accept="image/*" style="display:none">
-
-        <div class="image-upload-actions">
-          <button type="button" id="uploadImageBtn" class="upload-btn">
-            📷 Upload Image
-          </button>
-          <button type="button" id="removeImageBtn" class="remove-btn" style="display:none">
-            🗑 Remove Image
-          </button>
+        <div class="image-view-block">
+          <div class="image-view-label">Back view</div>
+          <div class="image-upload-box">
+            <div id="imagePreviewWrap-back" class="image-preview" style="display:none">
+              <img id="imagePreview-back" src="" alt="Preview">
+            </div>
+            <input type="file" id="imageFile-back" accept="image/*" style="display:none">
+            <div class="image-upload-actions">
+              <button type="button" id="uploadImageBtn-back" class="upload-btn">📷 Upload Image</button>
+              <button type="button" id="removeImageBtn-back" class="remove-btn" style="display:none">🗑 Remove</button>
+            </div>
+            <div id="uploadStatus-back" class="hint"></div>
+          </div>
+          <input type="text" id="image-back" name="image_back" placeholder="...or paste an image URL directly" style="margin-top:10px">
         </div>
 
-        <div id="uploadStatus" class="hint"></div>
+        <div class="image-view-block">
+          <div class="image-view-label">Side view</div>
+          <div class="image-upload-box">
+            <div id="imagePreviewWrap-side" class="image-preview" style="display:none">
+              <img id="imagePreview-side" src="" alt="Preview">
+            </div>
+            <input type="file" id="imageFile-side" accept="image/*" style="display:none">
+            <div class="image-upload-actions">
+              <button type="button" id="uploadImageBtn-side" class="upload-btn">📷 Upload Image</button>
+              <button type="button" id="removeImageBtn-side" class="remove-btn" style="display:none">🗑 Remove</button>
+            </div>
+            <div id="uploadStatus-side" class="hint"></div>
+          </div>
+          <input type="text" id="image-side" name="image_side" placeholder="...or paste an image URL directly" style="margin-top:10px">
+        </div>
+
+        <div class="image-view-block">
+          <div class="image-view-label">Close-up / detail view</div>
+          <div class="image-upload-box">
+            <div id="imagePreviewWrap-closeup" class="image-preview" style="display:none">
+              <img id="imagePreview-closeup" src="" alt="Preview">
+            </div>
+            <input type="file" id="imageFile-closeup" accept="image/*" style="display:none">
+            <div class="image-upload-actions">
+              <button type="button" id="uploadImageBtn-closeup" class="upload-btn">📷 Upload Image</button>
+              <button type="button" id="removeImageBtn-closeup" class="remove-btn" style="display:none">🗑 Remove</button>
+            </div>
+            <div id="uploadStatus-closeup" class="hint"></div>
+          </div>
+          <input type="text" id="image-closeup" name="image_closeup" placeholder="...or paste an image URL directly" style="margin-top:10px">
+        </div>
+
       </div>
-
-      <input
-        type="text"
-        id="image"
-        name="image"
-        placeholder="...or paste an image URL directly"
-        style="margin-top:10px"
-      >
-      <div class="hint">Uploading a photo fills this field in automatically — you can also paste a URL here instead if you already have one (optional; a fallback icon is used if left blank).</div>
 
       <label style="display:flex;align-items:center;gap:8px;margin-top:20px;font-weight:normal">
         <input type="checkbox" id="featured" name="featured" style="width:auto">
@@ -330,32 +398,39 @@
     const params = new URLSearchParams(location.search);
     const editId = params.get("id");
 
+    // The four image views this form manages. Each one gets its own
+    // upload/replace/remove UI, wired up by the same reusable function below.
+    const IMAGE_VIEWS = ["front", "back", "side", "closeup"];
+
     if (!getToken()) {
       document.getElementById("guard").style.display = "block";
     } else {
       document.getElementById("formContainer").style.display = "block";
-      wireImageUpload();
+      IMAGE_VIEWS.forEach(wireImageUpload);
       init(); // runs after wireImageUpload so its callbacks exist; init() itself
               // re-syncs the upload button labels once an existing product loads
     }
 
-    function updateImageButtonLabels() {
-      const imageUrlField = document.getElementById("image");
-      const uploadBtn = document.getElementById("uploadImageBtn");
-      const removeBtn = document.getElementById("removeImageBtn");
+    function updateImageButtonLabels(view) {
+      const imageUrlField = document.getElementById(`image-${view}`);
+      const uploadBtn = document.getElementById(`uploadImageBtn-${view}`);
+      const removeBtn = document.getElementById(`removeImageBtn-${view}`);
       const hasImage = !!imageUrlField.value.trim();
-      uploadBtn.textContent = hasImage ? "📷 Replace Image" : "📷 Upload Image";
+      uploadBtn.textContent = hasImage ? "📷 Replace" : "📷 Upload Image";
       removeBtn.style.display = hasImage ? "inline-block" : "none";
     }
 
-    function wireImageUpload() {
-      const fileInput = document.getElementById("imageFile");
-      const uploadBtn = document.getElementById("uploadImageBtn");
-      const removeBtn = document.getElementById("removeImageBtn");
-      const status = document.getElementById("uploadStatus");
-      const imageUrlField = document.getElementById("image");
-      const previewWrap = document.getElementById("imagePreviewWrap");
-      const previewImg = document.getElementById("imagePreview");
+    // One reusable function wires up upload/replace/remove/preview for
+    // whichever view ("front", "back", "side", "closeup") is passed in —
+    // avoids repeating the same logic four times.
+    function wireImageUpload(view) {
+      const fileInput = document.getElementById(`imageFile-${view}`);
+      const uploadBtn = document.getElementById(`uploadImageBtn-${view}`);
+      const removeBtn = document.getElementById(`removeImageBtn-${view}`);
+      const status = document.getElementById(`uploadStatus-${view}`);
+      const imageUrlField = document.getElementById(`image-${view}`);
+      const previewWrap = document.getElementById(`imagePreviewWrap-${view}`);
+      const previewImg = document.getElementById(`imagePreview-${view}`);
 
       // Clicking the visible button opens the real (hidden) file picker.
       // On a phone, accept="image/*" lets the browser offer "Photo Library"
@@ -367,9 +442,9 @@
         fileInput.value = "";
         previewImg.src = "";
         previewWrap.style.display = "none";
-        status.textContent = "Image removed. This product will use the category fallback icon until you upload or paste a new one.";
+        status.textContent = "Image removed.";
         status.className = "hint";
-        updateImageButtonLabels();
+        updateImageButtonLabels(view);
       });
 
       // Also preview if the admin pastes a URL directly instead of uploading
@@ -380,7 +455,7 @@
         } else {
           previewWrap.style.display = "none";
         }
-        updateImageButtonLabels();
+        updateImageButtonLabels(view);
       });
 
       fileInput.addEventListener("change", async () => {
@@ -420,7 +495,7 @@
           previewImg.src = data.secure_url;
           status.textContent = "Image uploaded ✓";
           status.className = "success";
-          updateImageButtonLabels();
+          updateImageButtonLabels(view);
         } catch (err) {
           status.textContent = "Upload failed: " + err.message;
           status.className = "error";
@@ -431,7 +506,7 @@
 
       // Set the correct initial label/visibility (matters most on the Edit
       // Product page, where an image may already be set before this runs).
-      updateImageButtonLabels();
+      updateImageButtonLabels(view);
     }
 
     async function init() {
@@ -469,14 +544,25 @@
         document.getElementById("price").value = product.price ?? "";
         document.getElementById("stock").value = product.stock ?? "";
         document.getElementById("category").value = product.category || "";
-        document.getElementById("image").value = product.image || "";
         document.getElementById("featured").checked = !!product.featured;
 
-        if (product.image) {
-          document.getElementById("imagePreview").src = product.image;
-          document.getElementById("imagePreviewWrap").style.display = "block";
-        }
-        updateImageButtonLabels();
+        // Map each DB field to its view's form fields
+        const viewSources = {
+          front: product.image,
+          back: product.image_back,
+          side: product.image_side,
+          closeup: product.image_closeup
+        };
+
+        IMAGE_VIEWS.forEach(view => {
+          const url = viewSources[view] || "";
+          document.getElementById(`image-${view}`).value = url;
+          if (url) {
+            document.getElementById(`imagePreview-${view}`).src = url;
+            document.getElementById(`imagePreviewWrap-${view}`).style.display = "block";
+          }
+          updateImageButtonLabels(view);
+        });
       } catch (err) {
         message.style.color = "#d00";
         message.textContent = "Could not load this product for editing: " + err.message;
@@ -497,7 +583,10 @@
         price: Number(document.getElementById("price").value),
         stock: Number(document.getElementById("stock").value),
         category: document.getElementById("category").value.trim(),
-        image: document.getElementById("image").value.trim(),
+        image: document.getElementById("image-front").value.trim(),
+        image_back: document.getElementById("image-back").value.trim(),
+        image_side: document.getElementById("image-side").value.trim(),
+        image_closeup: document.getElementById("image-closeup").value.trim(),
         featured: document.getElementById("featured").checked ? 1 : 0
       };
 
@@ -528,6 +617,15 @@
         } else {
           document.getElementById("productForm").reset();
           loadCategoryOptions();
+          // form.reset() clears the text fields but not the image previews
+          // or button labels (those aren't native form state) — clear them too.
+          IMAGE_VIEWS.forEach(view => {
+            document.getElementById(`imagePreviewWrap-${view}`).style.display = "none";
+            document.getElementById(`imagePreview-${view}`).src = "";
+            document.getElementById(`imageFile-${view}`).value = "";
+            document.getElementById(`uploadStatus-${view}`).textContent = "";
+            updateImageButtonLabels(view);
+          });
         }
 
       } catch (error) {

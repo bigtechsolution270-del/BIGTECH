@@ -5,8 +5,13 @@
 <div class="breadcrumb"><a href="index.html">Home</a> / <a data-product-category href="category.html">Category</a> / <span data-product-name>Product</span></div>
 
 <div class="pdp" data-product-root>
-  <div class="pdp-gallery">
-    <div class="gallery-main" data-product-media><div style="font-size:150px" class="card-icon-fallback">📱</div></div>
+  <div class="pdp-gallery" data-product-gallery>
+    <div class="gallery-main-wrap">
+      <button type="button" class="gallery-arrow gallery-arrow-prev" data-gallery-prev aria-label="Previous image" hidden>‹</button>
+      <div class="gallery-main" data-gallery-main><div style="font-size:150px" class="card-icon-fallback">📱</div></div>
+      <button type="button" class="gallery-arrow gallery-arrow-next" data-gallery-next aria-label="Next image" hidden>›</button>
+    </div>
+    <div class="gallery-thumbs" data-gallery-thumbs hidden></div>
 
     <div class="trust-badges">
       <div class="trust-badge">

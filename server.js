@@ -42,6 +42,9 @@ db.exec(`
     stock INTEGER NOT NULL DEFAULT 0,
     category TEXT DEFAULT '',
     image TEXT DEFAULT '',
+    image_back TEXT DEFAULT '',
+    image_side TEXT DEFAULT '',
+    image_closeup TEXT DEFAULT '',
     featured INTEGER DEFAULT 0,
     created_at TEXT DEFAULT CURRENT_TIMESTAMP,
     updated_at TEXT DEFAULT CURRENT_TIMESTAMP
@@ -59,6 +62,19 @@ db.exec(`
     updated_at TEXT DEFAULT CURRENT_TIMESTAMP
   );
 `);
+
+// Migration: add the multi-view image columns to a database that was
+// created before this feature existed (e.g. your already-live site).
+// SQLite has no "ADD COLUMN IF NOT EXISTS", so we check the existing
+// columns first and only add the ones that are actually missing.
+const existingProductColumns = db.prepare("PRAGMA table_info(products)").all().map(c => c.name);
+const newImageColumns = ["image_back", "image_side", "image_closeup"];
+newImageColumns.forEach(col => {
+  if (!existingProductColumns.includes(col)) {
+    db.exec(`ALTER TABLE products ADD COLUMN ${col} TEXT DEFAULT ''`);
+    console.log(`Migration: added missing column "${col}" to products table.`);
+  }
+});
 
 // Create first admin account
 const existingAdmin = db
@@ -328,6 +344,9 @@ app.post("/api/products", authenticateAdmin, (req, res) => {
     stock = 0,
     category = "",
     image = "",
+    image_back = "",
+    image_side = "",
+    image_closeup = "",
     featured = 0
   } = req.body;
 
@@ -339,8 +358,8 @@ app.post("/api/products", authenticateAdmin, (req, res) => {
 
   const result = db.prepare(`
     INSERT INTO products
-    (name, description, price, stock, category, image, featured)
-    VALUES (?, ?, ?, ?, ?, ?, ?)
+    (name, description, price, stock, category, image, image_back, image_side, image_closeup, featured)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `).run(
     name,
     description,
@@ -348,6 +367,9 @@ app.post("/api/products", authenticateAdmin, (req, res) => {
     Number(stock),
     category,
     image,
+    image_back,
+    image_side,
+    image_closeup,
     featured ? 1 : 0
   );
 
@@ -372,6 +394,9 @@ app.put("/api/products/:id", authenticateAdmin, (req, res) => {
     stock = 0,
     category = "",
     image = "",
+    image_back = "",
+    image_side = "",
+    image_closeup = "",
     featured = 0
   } = req.body;
 
@@ -394,6 +419,9 @@ app.put("/api/products/:id", authenticateAdmin, (req, res) => {
       stock = ?,
       category = ?,
       image = ?,
+      image_back = ?,
+      image_side = ?,
+      image_closeup = ?,
       featured = ?,
       updated_at = CURRENT_TIMESTAMP
     WHERE id = ?
@@ -404,6 +432,9 @@ app.put("/api/products/:id", authenticateAdmin, (req, res) => {
     Number(stock),
     category,
     image,
+    image_back,
+    image_side,
+    image_closeup,
     featured ? 1 : 0,
     req.params.id
   );

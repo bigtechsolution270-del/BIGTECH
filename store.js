@@ -248,6 +248,83 @@
   }
 
   // ---------- single product page ----------
+  // Builds the 4-view product gallery: a main image plus clickable
+  // thumbnails and prev/next arrows. Only views that actually have an
+  // image are shown — a product with just one photo gets no thumbnail
+  // row or arrows, so nothing looks broken for older/simpler listings.
+  function renderGallery(p) {
+    const galleryRoot = document.querySelector("[data-product-gallery]");
+    if (!galleryRoot) return; // page has no gallery markup (shouldn't happen on product.html)
+
+    const allViews = [
+      { key: "front", url: p.image, label: "Front view" },
+      { key: "back", url: p.image_back, label: "Back view" },
+      { key: "side", url: p.image_side, label: "Side view" },
+      { key: "closeup", url: p.image_closeup, label: "Close-up view" }
+    ];
+    const views = allViews.filter(v => v.url);
+    // If literally no image exists for this product, still render one
+    // "slot" so the icon fallback has somewhere to go.
+    const activeViews = views.length ? views : [{ key: "front", url: "", label: "Front view" }];
+
+    const mainEl = galleryRoot.querySelector("[data-gallery-main]");
+    const thumbsEl = galleryRoot.querySelector("[data-gallery-thumbs]");
+    const prevBtn = galleryRoot.querySelector("[data-gallery-prev]");
+    const nextBtn = galleryRoot.querySelector("[data-gallery-next]");
+    let currentIndex = 0;
+
+    function altText(view) {
+      return `${p.name} — ${view.label}`;
+    }
+
+    function showView(index, animate) {
+      currentIndex = (index + activeViews.length) % activeViews.length;
+      const view = activeViews[currentIndex];
+
+      const paint = () => {
+        mainEl.innerHTML = view.url
+          ? `<img src="${escapeAttr(view.url)}" alt="${escapeAttr(altText(view))}" onerror="this.remove();this.parentElement.insertAdjacentHTML('beforeend','<span class=&quot;card-icon-fallback&quot;>${icon(p.category)}</span>')">`
+          : `<span class="card-icon-fallback">${icon(p.category)}</span>`;
+        if (animate) requestAnimationFrame(() => mainEl.classList.remove("fading"));
+      };
+
+      if (animate) {
+        mainEl.classList.add("fading");
+        setTimeout(paint, 140);
+      } else {
+        paint();
+      }
+
+      thumbsEl?.querySelectorAll("[data-thumb-index]").forEach(t => {
+        t.classList.toggle("active", Number(t.dataset.thumbIndex) === currentIndex);
+      });
+    }
+
+    if (thumbsEl) {
+      if (activeViews.length > 1) {
+        thumbsEl.hidden = false;
+        thumbsEl.innerHTML = activeViews.map((v, i) => `
+          <button type="button" class="gallery-thumb" data-thumb-index="${i}" aria-label="Show ${escapeAttr(v.label.toLowerCase())}">
+            ${v.url ? `<img src="${escapeAttr(v.url)}" alt="${escapeAttr(altText(v))}" loading="lazy">` : `<span class="card-icon-fallback" style="font-size:24px">${icon(p.category)}</span>`}
+          </button>
+        `).join("");
+        thumbsEl.querySelectorAll("[data-thumb-index]").forEach(btn => {
+          btn.addEventListener("click", () => showView(Number(btn.dataset.thumbIndex), true));
+        });
+      } else {
+        thumbsEl.hidden = true;
+        thumbsEl.innerHTML = "";
+      }
+    }
+
+    const showArrows = activeViews.length > 1;
+    [prevBtn, nextBtn].forEach(btn => { if (btn) btn.hidden = !showArrows; });
+    if (prevBtn) prevBtn.onclick = () => showView(currentIndex - 1, true);
+    if (nextBtn) nextBtn.onclick = () => showView(currentIndex + 1, true);
+
+    showView(0, false);
+  }
+
   async function wireProductPage() {
     const root = document.querySelector("[data-product-root]");
     if (!root) return;
@@ -273,7 +350,7 @@
       e.innerHTML = outOfStock ? "Out of stock" : `<span class="dot"></span> In stock${p.stock ? ` (${p.stock} left)` : ""}`;
       e.classList.toggle("stock", !outOfStock);
     });
-    document.querySelectorAll("[data-product-media]").forEach(e => { e.innerHTML = mediaFor(p); });
+    renderGallery(p);
 
     document.querySelectorAll("[data-add-product]").forEach(b => {
       b.disabled = outOfStock;
