@@ -11,7 +11,10 @@ const PORT = process.env.PORT || 3000;
 const JWT_SECRET = process.env.JWT_SECRET || "CHANGE_THIS_SECRET";
 
 app.use(cors());
-app.use(express.json());
+app.use(express.json({ limit: "12mb" })); // raised from the default 100kb so a
+                                            // base64-encoded product photo can
+                                            // fit in the request body for the
+                                            // background-removal endpoint below
 app.use(express.urlencoded({ extended: true }));
 
 // Database
@@ -258,6 +261,85 @@ app.post("/api/admin/change-password", authenticateAdmin, (req, res) => {
     success: true,
     message: "Password updated successfully"
   });
+});
+
+// REMOVE BACKGROUND FROM A PRODUCT PHOTO
+// Accepts a base64-encoded JPG/PNG from the admin panel, sends it to the
+// remove.bg API using a server-side-only API key (never exposed to the
+// browser), and returns the resulting transparent PNG as base64. The admin
+// panel then uploads whichever version (original or background-removed) the
+// user picks to Cloudinary itself, the same way it already does for normal
+// uploads — this endpoint only ever handles the AI processing step.
+app.post("/api/admin/remove-background", authenticateAdmin, async (req, res) => {
+  const { image_base64 } = req.body;
+
+  if (!image_base64) {
+    return res.status(400).json({
+      error: "No image data was provided"
+    });
+  }
+
+  const apiKey = process.env.REMOVE_BG_API_KEY;
+  if (!apiKey) {
+    return res.status(500).json({
+      error: "Background removal isn't configured on the server yet. Set REMOVE_BG_API_KEY in the environment and restart the server."
+    });
+  }
+
+  // Rough pre-check before calling the external API (remove.bg's own
+  // ceiling is around 12MB for the source image).
+  const approxBytes = image_base64.length * 0.75;
+  if (approxBytes > 12 * 1024 * 1024) {
+    return res.status(413).json({
+      error: "That image is too large for background removal. Please use a photo under 10MB."
+    });
+  }
+
+  try {
+    const removeBgResponse = await fetch("https://api.remove.bg/v1.0/removebg", {
+      method: "POST",
+      headers: {
+        "X-Api-Key": apiKey,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        image_file_b64: image_base64,
+        size: "auto",
+        format: "png"
+      })
+    });
+
+    if (!removeBgResponse.ok) {
+      let message = "Background removal failed";
+      try {
+        const errorBody = await removeBgResponse.json();
+        message = errorBody?.errors?.[0]?.title || message;
+      } catch {
+        // remove.bg didn't return JSON (rare) — fall back to the generic message above
+      }
+
+      // Surface unsupported-file / bad-image errors as 400s so the admin
+      // panel can show a clear "unsupported image" message rather than a
+      // generic server error.
+      const status = removeBgResponse.status === 400 ? 400
+        : removeBgResponse.status === 402 ? 402
+        : 502;
+      return res.status(status).json({ error: message });
+    }
+
+    const resultBuffer = Buffer.from(await removeBgResponse.arrayBuffer());
+
+    res.json({
+      success: true,
+      image_base64: resultBuffer.toString("base64"),
+      mime_type: "image/png"
+    });
+  } catch (err) {
+    console.error("remove.bg request failed:", err);
+    res.status(502).json({
+      error: "Could not reach the background removal service. Please try again."
+    });
+  }
 });
 
 // DASHBOARD

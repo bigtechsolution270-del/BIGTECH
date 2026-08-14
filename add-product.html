@@ -139,6 +139,129 @@
       }
     }
 
+    .bg-remove-zone {
+      margin-top: 10px;
+    }
+
+    .bg-remove-btn {
+      width: 100%;
+      background: linear-gradient(135deg, #7c3aed, #2563eb);
+      color: #fff;
+      border: none;
+      padding: 11px 16px;
+      border-radius: 6px;
+      font-size: 13px;
+      font-weight: bold;
+      cursor: pointer;
+    }
+
+    .bg-remove-btn:hover {
+      opacity: 0.92;
+    }
+
+    .bg-remove-btn:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+
+    .bg-remove-status {
+      margin-top: 8px;
+      font-size: 12px;
+    }
+
+    .bg-remove-status.processing {
+      color: #7c3aed;
+      font-weight: bold;
+    }
+
+    .bg-remove-status.error {
+      color: #d00;
+      font-weight: bold;
+    }
+
+    .bg-compare {
+      display: none;
+      margin-top: 14px;
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      padding: 14px;
+      background: #fff;
+    }
+
+    .bg-compare.visible {
+      display: block;
+    }
+
+    .bg-compare-label {
+      font-size: 12px;
+      font-weight: bold;
+      color: #333;
+      margin-bottom: 10px;
+    }
+
+    .bg-compare-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+
+    .bg-compare-col {
+      text-align: center;
+    }
+
+    .bg-compare-col h5 {
+      font-size: 11px;
+      color: #777;
+      margin-bottom: 6px;
+      font-weight: bold;
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
+    }
+
+    .bg-compare-thumb {
+      width: 100%;
+      aspect-ratio: 1 / 1;
+      border: 1px solid #eee;
+      border-radius: 6px;
+      background-image:
+        linear-gradient(45deg, #eee 25%, transparent 25%),
+        linear-gradient(-45deg, #eee 25%, transparent 25%),
+        linear-gradient(45deg, transparent 75%, #eee 75%),
+        linear-gradient(-45deg, transparent 75%, #eee 75%);
+      background-size: 16px 16px;
+      background-position: 0 0, 0 8px, 8px -8px, -8px 0px;
+      display: grid;
+      place-items: center;
+      overflow: hidden;
+      margin-bottom: 8px;
+    }
+
+    .bg-compare-thumb img {
+      max-width: 100%;
+      max-height: 100%;
+      object-fit: contain;
+    }
+
+    .bg-compare-use-btn {
+      width: 100%;
+      background: #111;
+      color: #fff;
+      border: none;
+      padding: 9px 10px;
+      border-radius: 6px;
+      font-size: 12px;
+      font-weight: bold;
+      cursor: pointer;
+    }
+
+    .bg-compare-use-btn:hover {
+      opacity: 0.9;
+    }
+
+    .bg-compare-use-btn.active-choice {
+      background: #19a974;
+    }
+
     .image-upload-box {
       margin-top: 6px;
       border: 2px dashed #ccc;
@@ -311,6 +434,7 @@
               <button type="button" id="removeImageBtn-front" class="remove-btn" style="display:none">🗑 Remove</button>
             </div>
             <div id="uploadStatus-front" class="hint"></div>
+            <div class="bg-remove-zone" data-bg-zone="front"></div>
           </div>
           <input type="text" id="image-front" name="image" placeholder="...or paste an image URL directly" style="margin-top:10px">
         </div>
@@ -327,6 +451,7 @@
               <button type="button" id="removeImageBtn-back" class="remove-btn" style="display:none">🗑 Remove</button>
             </div>
             <div id="uploadStatus-back" class="hint"></div>
+            <div class="bg-remove-zone" data-bg-zone="back"></div>
           </div>
           <input type="text" id="image-back" name="image_back" placeholder="...or paste an image URL directly" style="margin-top:10px">
         </div>
@@ -343,6 +468,7 @@
               <button type="button" id="removeImageBtn-side" class="remove-btn" style="display:none">🗑 Remove</button>
             </div>
             <div id="uploadStatus-side" class="hint"></div>
+            <div class="bg-remove-zone" data-bg-zone="side"></div>
           </div>
           <input type="text" id="image-side" name="image_side" placeholder="...or paste an image URL directly" style="margin-top:10px">
         </div>
@@ -359,6 +485,7 @@
               <button type="button" id="removeImageBtn-closeup" class="remove-btn" style="display:none">🗑 Remove</button>
             </div>
             <div id="uploadStatus-closeup" class="hint"></div>
+            <div class="bg-remove-zone" data-bg-zone="closeup"></div>
           </div>
           <input type="text" id="image-closeup" name="image_closeup" placeholder="...or paste an image URL directly" style="margin-top:10px">
         </div>
@@ -391,6 +518,59 @@
     const CLOUDINARY_CLOUD_NAME = "klz22pzt";
     const CLOUDINARY_UPLOAD_PRESET = "bigtech_products";
 
+    // Uploads a File/Blob straight to Cloudinary and returns its permanent
+    // URL. Shared by the normal upload flow and by "Use Background Removed"
+    // (which uploads the processed PNG the same way).
+    async function uploadFileToCloudinary(file) {
+      if (CLOUDINARY_CLOUD_NAME === "YOUR_CLOUD_NAME") {
+        throw new Error("Cloudinary isn't configured yet — set CLOUDINARY_CLOUD_NAME and CLOUDINARY_UPLOAD_PRESET in this file's <script> section.");
+      }
+      const formData = new FormData();
+      formData.append("file", file);
+      formData.append("upload_preset", CLOUDINARY_UPLOAD_PRESET);
+
+      const res = await fetch(
+        `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/image/upload`,
+        { method: "POST", body: formData }
+      );
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.error?.message || "Upload failed");
+      }
+      return data.secure_url;
+    }
+
+    // Converts a File/Blob to a plain base64 string (no "data:...;base64,"
+    // prefix) — the format our backend's /api/admin/remove-background
+    // endpoint expects.
+    function fileToBase64(file) {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result.split(",")[1]);
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
+    }
+
+    // Converts a base64 PNG string back into a real File object, so the
+    // background-removed result can be uploaded to Cloudinary exactly like
+    // any other picked file.
+    function base64ToFile(base64, mimeType, filename) {
+      const byteChars = atob(base64);
+      const byteNumbers = new Array(byteChars.length);
+      for (let i = 0; i < byteChars.length; i++) byteNumbers[i] = byteChars.charCodeAt(i);
+      const byteArray = new Uint8Array(byteNumbers);
+      return new File([byteArray], filename, { type: mimeType });
+    }
+
+    // Tracks the raw File the admin most recently picked for each view, and
+    // any background-removal result for it, so the "Remove Background" /
+    // "Use Original" / "Use Background Removed" buttons have something to
+    // act on after the initial Cloudinary upload has already happened.
+    const lastSelectedFile = {};
+    const lastBgRemovedResult = {};
+
     function getToken() {
       return localStorage.getItem("bigtechAdminToken") || "";
     }
@@ -407,6 +587,7 @@
     } else {
       document.getElementById("formContainer").style.display = "block";
       IMAGE_VIEWS.forEach(wireImageUpload);
+      IMAGE_VIEWS.forEach(wireBgRemoval);
       init(); // runs after wireImageUpload so its callbacks exist; init() itself
               // re-syncs the upload button labels once an existing product loads
     }
@@ -444,6 +625,9 @@
         previewWrap.style.display = "none";
         status.textContent = "Image removed.";
         status.className = "hint";
+        delete lastSelectedFile[view];
+        delete lastBgRemovedResult[view];
+        hideBgCompare(view);
         updateImageButtonLabels(view);
       });
 
@@ -462,11 +646,9 @@
         const file = fileInput.files[0];
         if (!file) return;
 
-        if (CLOUDINARY_CLOUD_NAME === "YOUR_CLOUD_NAME") {
-          status.textContent = "Cloudinary isn't configured yet — set CLOUDINARY_CLOUD_NAME and CLOUDINARY_UPLOAD_PRESET in this file's <script> section.";
-          status.className = "error";
-          return;
-        }
+        lastSelectedFile[view] = file;
+        delete lastBgRemovedResult[view]; // a fresh file invalidates any previous bg-removal result
+        hideBgCompare(view);
 
         // Show an instant local preview while the real upload happens
         previewImg.src = URL.createObjectURL(file);
@@ -477,22 +659,9 @@
         uploadBtn.disabled = true;
 
         try {
-          const formData = new FormData();
-          formData.append("file", file);
-          formData.append("upload_preset", CLOUDINARY_UPLOAD_PRESET);
-
-          const res = await fetch(
-            `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/image/upload`,
-            { method: "POST", body: formData }
-          );
-          const data = await res.json();
-
-          if (!res.ok) {
-            throw new Error(data.error?.message || "Upload failed");
-          }
-
-          imageUrlField.value = data.secure_url;
-          previewImg.src = data.secure_url;
+          const url = await uploadFileToCloudinary(file);
+          imageUrlField.value = url;
+          previewImg.src = url;
           status.textContent = "Image uploaded ✓";
           status.className = "success";
           updateImageButtonLabels(view);
@@ -507,6 +676,153 @@
       // Set the correct initial label/visibility (matters most on the Edit
       // Product page, where an image may already be set before this runs).
       updateImageButtonLabels(view);
+    }
+
+    function hideBgCompare(view) {
+      const compare = document.querySelector(`.bg-remove-zone[data-bg-zone="${view}"] .bg-compare`);
+      if (compare) compare.classList.remove("visible");
+    }
+
+    // Builds and wires the "✨ Remove Background" button and the
+    // Original-vs-Removed comparison panel for one image view. The panel's
+    // HTML is generated here (rather than duplicated 4x in the page markup)
+    // to keep the file manageable.
+    function wireBgRemoval(view) {
+      const zone = document.querySelector(`.bg-remove-zone[data-bg-zone="${view}"]`);
+      if (!zone) return;
+
+      zone.innerHTML = `
+        <button type="button" class="bg-remove-btn">✨ Remove Background</button>
+        <div class="bg-remove-status"></div>
+        <div class="bg-compare">
+          <div class="bg-compare-label">Choose which version to use:</div>
+          <div class="bg-compare-row">
+            <div class="bg-compare-col">
+              <h5>Original</h5>
+              <div class="bg-compare-thumb"><img class="bg-compare-original-img" src="" alt="Original photo"></div>
+              <button type="button" class="bg-compare-use-btn" data-choice="original">Use Original</button>
+            </div>
+            <div class="bg-compare-col">
+              <h5>Background Removed</h5>
+              <div class="bg-compare-thumb"><img class="bg-compare-removed-img" src="" alt="Background removed"></div>
+              <button type="button" class="bg-compare-use-btn" data-choice="removed">Use Background Removed</button>
+            </div>
+          </div>
+        </div>
+      `;
+
+      const removeBtn = zone.querySelector(".bg-remove-btn");
+      const status = zone.querySelector(".bg-remove-status");
+      const compare = zone.querySelector(".bg-compare");
+      const originalImgEl = zone.querySelector(".bg-compare-original-img");
+      const removedImgEl = zone.querySelector(".bg-compare-removed-img");
+      const useOriginalBtn = zone.querySelector('[data-choice="original"]');
+      const useRemovedBtn = zone.querySelector('[data-choice="removed"]');
+
+      const imageUrlField = document.getElementById(`image-${view}`);
+      const previewImg = document.getElementById(`imagePreview-${view}`);
+      const previewWrap = document.getElementById(`imagePreviewWrap-${view}`);
+
+      removeBtn.addEventListener("click", async () => {
+        const file = lastSelectedFile[view];
+
+        if (!file) {
+          status.textContent = "Upload a JPG or PNG photo above first, then you can remove its background.";
+          status.className = "bg-remove-status error";
+          return;
+        }
+
+        const allowedTypes = ["image/jpeg", "image/jpg", "image/png"];
+        if (!allowedTypes.includes(file.type)) {
+          status.textContent = "Only JPG, JPEG or PNG images are supported for background removal.";
+          status.className = "bg-remove-status error";
+          return;
+        }
+        if (file.size > 10 * 1024 * 1024) {
+          status.textContent = "That image is too large for background removal (max 10MB). Your original photo is still fine to use as-is.";
+          status.className = "bg-remove-status error";
+          return;
+        }
+
+        status.textContent = "✨ Removing background… this can take a few seconds";
+        status.className = "bg-remove-status processing";
+        removeBtn.disabled = true;
+
+        try {
+          const base64 = await fileToBase64(file);
+          const res = await fetch("/api/admin/remove-background", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "Authorization": "Bearer " + getToken()
+            },
+            body: JSON.stringify({ image_base64: base64 })
+          });
+          const data = await res.json();
+
+          if (!res.ok) {
+            throw new Error(data.error || "Background removal failed");
+          }
+
+          lastBgRemovedResult[view] = { base64: data.image_base64, mimeType: data.mime_type || "image/png" };
+
+          originalImgEl.src = URL.createObjectURL(file);
+          removedImgEl.src = `data:${lastBgRemovedResult[view].mimeType};base64,${data.image_base64}`;
+          compare.classList.add("visible");
+          useOriginalBtn.classList.remove("active-choice");
+          useRemovedBtn.classList.remove("active-choice");
+
+          status.textContent = "Done! Pick whichever version looks best below.";
+          status.className = "bg-remove-status";
+        } catch (err) {
+          // The original file/upload is completely untouched by a failure here.
+          status.textContent = "Background removal failed: " + err.message + " — your original photo is still selected and safe to use.";
+          status.className = "bg-remove-status error";
+        } finally {
+          removeBtn.disabled = false;
+        }
+      });
+
+      useOriginalBtn.addEventListener("click", () => {
+        // The original was already uploaded to Cloudinary the moment it was
+        // picked, so imageUrlField already points at it — this just confirms
+        // the choice visually and makes sure the visible preview matches.
+        const file = lastSelectedFile[view];
+        if (file) previewImg.src = URL.createObjectURL(file);
+        useOriginalBtn.classList.add("active-choice");
+        useRemovedBtn.classList.remove("active-choice");
+        status.textContent = "Using the original photo.";
+        status.className = "bg-remove-status";
+      });
+
+      useRemovedBtn.addEventListener("click", async () => {
+        const result = lastBgRemovedResult[view];
+        if (!result) return;
+
+        useRemovedBtn.disabled = true;
+        status.textContent = "Saving background-removed version…";
+        status.className = "bg-remove-status processing";
+
+        try {
+          const bgFile = base64ToFile(result.base64, result.mimeType, `${view}-nobg.png`);
+          const url = await uploadFileToCloudinary(bgFile);
+
+          imageUrlField.value = url;
+          previewImg.src = url;
+          previewWrap.style.display = "block";
+          updateImageButtonLabels(view);
+
+          useRemovedBtn.classList.add("active-choice");
+          useOriginalBtn.classList.remove("active-choice");
+          status.textContent = "Using the background-removed version ✓";
+          status.className = "bg-remove-status";
+        } catch (err) {
+          status.textContent = "Could not save the background-removed image: " + err.message + " — the original is still in use.";
+          status.className = "bg-remove-status error";
+        } finally {
+          useRemovedBtn.disabled = false;
+        }
+      });
     }
 
     async function init() {
@@ -624,6 +940,9 @@
             document.getElementById(`imagePreview-${view}`).src = "";
             document.getElementById(`imageFile-${view}`).value = "";
             document.getElementById(`uploadStatus-${view}`).textContent = "";
+            delete lastSelectedFile[view];
+            delete lastBgRemovedResult[view];
+            hideBgCompare(view);
             updateImageButtonLabels(view);
           });
         }
