@@ -1,9 +1,8 @@
 const express = require("express");
-const Database = require("better-sqlite3");
+const { Pool } = require("pg");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const cors = require("cors");
-const path = require("path");
 require("dotenv").config({ quiet: true });
 
 const app = express();
@@ -17,122 +16,137 @@ app.use(express.json({ limit: "12mb" })); // raised from the default 100kb so a
                                             // background-removal endpoint below
 app.use(express.urlencoded({ extended: true }));
 
-// Database
-const db = new Database(path.join(__dirname, "bigtech.db"));
+// ---------------------------------------------------------------------------
+// DATABASE — persistent hosted Postgres (Neon / Supabase / any standard
+// Postgres provider), instead of a local SQLite file. This is the fix for
+// products getting wiped on every Render restart/redeploy: Render's free web
+// service has no permanent disk, but a Postgres database on Neon/Supabase
+// lives on its own separate, permanent infrastructure — restarting or
+// redeploying the BIGTECH app itself no longer touches it at all.
+//
+// DATABASE_URL must be set in the environment (Render -> Environment tab).
+// It looks like: postgresql://user:password@host/dbname?sslmode=require
+// ---------------------------------------------------------------------------
+if (!process.env.DATABASE_URL) {
+  console.error("");
+  console.error("FATAL: DATABASE_URL is not set.");
+  console.error("Set it in your .env file (local) or Render's Environment tab (production)");
+  console.error("to your Neon/Supabase Postgres connection string, then restart.");
+  console.error("");
+  process.exit(1);
+}
 
-db.pragma("journal_mode = WAL");
-
-// Create tables
-db.exec(`
-  CREATE TABLE IF NOT EXISTS admins (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    username TEXT UNIQUE NOT NULL,
-    password TEXT NOT NULL,
-    created_at TEXT DEFAULT CURRENT_TIMESTAMP
-  );
-
-  CREATE TABLE IF NOT EXISTS categories (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    name TEXT UNIQUE NOT NULL,
-    created_at TEXT DEFAULT CURRENT_TIMESTAMP
-  );
-
-  CREATE TABLE IF NOT EXISTS products (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    name TEXT NOT NULL,
-    description TEXT DEFAULT '',
-    price REAL NOT NULL DEFAULT 0,
-    stock INTEGER NOT NULL DEFAULT 0,
-    category TEXT DEFAULT '',
-    image TEXT DEFAULT '',
-    image_back TEXT DEFAULT '',
-    image_side TEXT DEFAULT '',
-    image_closeup TEXT DEFAULT '',
-    featured INTEGER DEFAULT 0,
-    created_at TEXT DEFAULT CURRENT_TIMESTAMP,
-    updated_at TEXT DEFAULT CURRENT_TIMESTAMP
-  );
-
-  CREATE TABLE IF NOT EXISTS orders (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    customer_name TEXT NOT NULL,
-    customer_phone TEXT DEFAULT '',
-    customer_address TEXT DEFAULT '',
-    items TEXT NOT NULL,
-    total REAL NOT NULL DEFAULT 0,
-    status TEXT NOT NULL DEFAULT 'Pending',
-    created_at TEXT DEFAULT CURRENT_TIMESTAMP,
-    updated_at TEXT DEFAULT CURRENT_TIMESTAMP
-  );
-`);
-
-// Migration: add the multi-view image columns to a database that was
-// created before this feature existed (e.g. your already-live site).
-// SQLite has no "ADD COLUMN IF NOT EXISTS", so we check the existing
-// columns first and only add the ones that are actually missing.
-const existingProductColumns = db.prepare("PRAGMA table_info(products)").all().map(c => c.name);
-const newImageColumns = ["image_back", "image_side", "image_closeup"];
-newImageColumns.forEach(col => {
-  if (!existingProductColumns.includes(col)) {
-    db.exec(`ALTER TABLE products ADD COLUMN ${col} TEXT DEFAULT ''`);
-    console.log(`Migration: added missing column "${col}" to products table.`);
-  }
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL,
+  ssl: { rejectUnauthorized: false } // required by Neon/Supabase's managed Postgres
 });
 
-// Create first admin account
-const existingAdmin = db
-  .prepare("SELECT id FROM admins WHERE username = ?")
-  .get("admin");
+pool.on("error", err => {
+  // Fired for errors on idle clients in the pool (e.g. a dropped connection)
+  // — logged so it's visible, but doesn't crash the whole server.
+  console.error("Unexpected error on idle Postgres client:", err);
+});
 
-if (!existingAdmin) {
-  const passwordHash = bcrypt.hashSync("599730Pp@@", 12);
-
-  db.prepare(`
-    INSERT INTO admins (username, password)
-    VALUES (?, ?)
-  `).run("admin", passwordHash);
-
-  console.log("Default admin created.");
-}
-
-// Seed default categories used across the storefront nav, if none exist yet
-const categoryCount = db.prepare("SELECT COUNT(*) AS count FROM categories").get().count;
-if (categoryCount === 0) {
-  const defaultCategories = ["Phones", "Tablets", "Laptops", "Nintendo", "PlayStation", "Xbox"];
-  const insertCat = db.prepare("INSERT OR IGNORE INTO categories (name) VALUES (?)");
-  defaultCategories.forEach(name => insertCat.run(name));
-  console.log("Default categories seeded.");
-}
-
-// Seed a small demo catalog so the storefront isn't empty on first run.
-// This only runs once, and never touches products a real admin has already added.
-const productCount = db.prepare("SELECT COUNT(*) AS count FROM products").get().count;
-if (productCount <= 1) {
-  const demoProducts = [
-    { name: "iPhone 15 Pro Max 256GB", description: "Genuine iPhone 15 Pro Max, 256GB storage. Comes with BIGTECH warranty support.", price: 28999, stock: 8, category: "Phones", image: "", featured: 1 },
-    { name: "Samsung Galaxy S24 Ultra 512GB", description: "Samsung's flagship with 512GB storage and S Pen included.", price: 24999, stock: 6, category: "Phones", image: "", featured: 1 },
-    { name: "iPad 10th Generation", description: "10th generation iPad, great for work, study and entertainment.", price: 13999, stock: 10, category: "Tablets", image: "", featured: 1 },
-    { name: "HP Pavilion x360", description: "Brand new HP Pavilion x360 laptop, convertible 2-in-1 design.", price: 24999, stock: 5, category: "Laptops", image: "", featured: 1 },
-    { name: "Lenovo IdeaPad Slim 3", description: "Everyday Lenovo laptop with fast SSD storage, great for work and study.", price: 19999, stock: 6, category: "Laptops", image: "", featured: 0 },
-    { name: "Nintendo Switch OLED", description: "Nintendo Switch OLED model with vivid 7-inch screen.", price: 10999, stock: 12, category: "Nintendo", image: "", featured: 1 },
-    { name: "PlayStation 5 Digital Edition", description: "Sony PlayStation 5 Digital Edition console.", price: 17299, stock: 5, category: "PlayStation", image: "", featured: 1 },
-    { name: "Xbox Series X 1TB", description: "Microsoft Xbox Series X, 1TB storage, 4K gaming.", price: 16999, stock: 7, category: "Xbox", image: "", featured: 1 }
-  ];
-  const insertProduct = db.prepare(`
-    INSERT INTO products (name, description, price, stock, category, image, featured)
-    VALUES (@name, @description, @price, @stock, @category, @image, @featured)
+// Creates all tables if they don't already exist yet. Safe to run on every
+// boot: CREATE TABLE IF NOT EXISTS never touches a table that's already
+// there, so this never resets or overwrites real product data.
+async function initSchema() {
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS admins (
+      id SERIAL PRIMARY KEY,
+      username TEXT UNIQUE NOT NULL,
+      password TEXT NOT NULL,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    );
   `);
-  const insertMany = db.transaction(items => items.forEach(p => insertProduct.run(p)));
-  insertMany(demoProducts);
-  console.log("Demo products seeded.");
+
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS categories (
+      id SERIAL PRIMARY KEY,
+      name TEXT UNIQUE NOT NULL,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    );
+  `);
+
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS products (
+      id SERIAL PRIMARY KEY,
+      name TEXT NOT NULL,
+      description TEXT DEFAULT '',
+      price REAL NOT NULL DEFAULT 0,
+      stock INTEGER NOT NULL DEFAULT 0,
+      category TEXT DEFAULT '',
+      image TEXT DEFAULT '',
+      image_back TEXT DEFAULT '',
+      image_side TEXT DEFAULT '',
+      image_closeup TEXT DEFAULT '',
+      featured INTEGER DEFAULT 0,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    );
+  `);
+
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS orders (
+      id SERIAL PRIMARY KEY,
+      customer_name TEXT NOT NULL,
+      customer_phone TEXT DEFAULT '',
+      customer_address TEXT DEFAULT '',
+      items TEXT NOT NULL,
+      total REAL NOT NULL DEFAULT 0,
+      status TEXT NOT NULL DEFAULT 'Pending',
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    );
+  `);
+
+  // Create the first admin account only if none exists yet. This never
+  // overwrites an existing admin, so a real password change is never undone.
+  const existingAdmin = await pool.query(
+    "SELECT id FROM admins WHERE username = $1",
+    ["admin"]
+  );
+
+  if (existingAdmin.rows.length === 0) {
+    const passwordHash = bcrypt.hashSync("599730Pp@@", 12);
+    await pool.query(
+      "INSERT INTO admins (username, password) VALUES ($1, $2)",
+      ["admin", passwordHash]
+    );
+    console.log("Default admin created.");
+  }
+
+  // Seed the starter categories used across the storefront nav, but only if
+  // the categories table is completely empty — never touches it again after
+  // that, so deleting/renaming categories in Admin sticks permanently.
+  const categoryCount = await pool.query("SELECT COUNT(*) AS count FROM categories");
+  if (Number(categoryCount.rows[0].count) === 0) {
+    const defaultCategories = ["Phones", "Tablets", "Laptops", "Nintendo", "PlayStation", "Xbox"];
+    for (const name of defaultCategories) {
+      await pool.query(
+        "INSERT INTO categories (name) VALUES ($1) ON CONFLICT (name) DO NOTHING",
+        [name]
+      );
+    }
+    console.log("Default categories seeded.");
+  }
+
+  // NOTE: there is deliberately no demo/sample PRODUCT seeding here anymore.
+  // Products now come only from what you add through the Admin panel, and
+  // nothing on startup will ever insert, modify, or remove them.
 }
 
-// Keep the categories table in sync with any category name used on a product,
-// so the admin category list always reflects what's actually in the catalog.
-function ensureCategoryExists(name) {
+// Keep the categories table in sync with any category name used on a
+// product, so the admin category list always reflects what's actually in
+// the catalog. ON CONFLICT DO NOTHING makes this a safe no-op if the
+// category already exists.
+async function ensureCategoryExists(name) {
   const trimmed = (name || "").trim();
   if (!trimmed) return;
-  db.prepare("INSERT OR IGNORE INTO categories (name) VALUES (?)").run(trimmed);
+  await pool.query(
+    "INSERT INTO categories (name) VALUES ($1) ON CONFLICT (name) DO NOTHING",
+    [trimmed]
+  );
 }
 
 // Authentication middleware
@@ -167,7 +181,7 @@ app.get("/api/health", (req, res) => {
 });
 
 // ADMIN LOGIN
-app.post("/api/admin/login", (req, res) => {
+app.post("/api/admin/login", async (req, res) => {
   const { username, password } = req.body;
 
   if (!username || !password) {
@@ -176,9 +190,11 @@ app.post("/api/admin/login", (req, res) => {
     });
   }
 
-  const admin = db
-    .prepare("SELECT * FROM admins WHERE username = ?")
-    .get(username);
+  const result = await pool.query(
+    "SELECT * FROM admins WHERE username = $1",
+    [username]
+  );
+  const admin = result.rows[0];
 
   if (!admin) {
     return res.status(401).json({
@@ -224,7 +240,7 @@ app.get("/api/admin/me", authenticateAdmin, (req, res) => {
 });
 
 // CHANGE ADMIN PASSWORD
-app.post("/api/admin/change-password", authenticateAdmin, (req, res) => {
+app.post("/api/admin/change-password", authenticateAdmin, async (req, res) => {
   const { currentPassword, newPassword } = req.body;
 
   if (!currentPassword || !newPassword) {
@@ -239,9 +255,11 @@ app.post("/api/admin/change-password", authenticateAdmin, (req, res) => {
     });
   }
 
-  const admin = db
-    .prepare("SELECT * FROM admins WHERE id = ?")
-    .get(req.admin.id);
+  const result = await pool.query(
+    "SELECT * FROM admins WHERE id = $1",
+    [req.admin.id]
+  );
+  const admin = result.rows[0];
 
   if (!admin) {
     return res.status(404).json({ error: "Admin account not found" });
@@ -255,7 +273,10 @@ app.post("/api/admin/change-password", authenticateAdmin, (req, res) => {
 
   const newHash = bcrypt.hashSync(newPassword, 12);
 
-  db.prepare("UPDATE admins SET password = ? WHERE id = ?").run(newHash, admin.id);
+  await pool.query(
+    "UPDATE admins SET password = $1 WHERE id = $2",
+    [newHash, admin.id]
+  );
 
   res.json({
     success: true,
@@ -343,70 +364,52 @@ app.post("/api/admin/remove-background", authenticateAdmin, async (req, res) => 
 });
 
 // DASHBOARD
-app.get("/api/admin/dashboard", authenticateAdmin, (req, res) => {
-  const productCount = db
-    .prepare("SELECT COUNT(*) AS count FROM products")
-    .get().count;
-
-  const categoryCount = db
-    .prepare("SELECT COUNT(*) AS count FROM categories")
-    .get().count;
-
-  const orderCount = db
-    .prepare("SELECT COUNT(*) AS count FROM orders")
-    .get().count;
-
-  const pendingOrders = db
-    .prepare(`
-      SELECT COUNT(*) AS count
-      FROM orders
-      WHERE status = 'Pending'
-    `)
-    .get().count;
-
-  const sales = db
-    .prepare(`
-      SELECT COALESCE(SUM(total), 0) AS total
-      FROM orders
-      WHERE status != 'Cancelled'
-    `)
-    .get().total;
-
-  const lowStock = db
-    .prepare(`
-      SELECT COUNT(*) AS count
-      FROM products
-      WHERE stock <= 5
-    `)
-    .get().count;
+app.get("/api/admin/dashboard", authenticateAdmin, async (req, res) => {
+  const productCount = await pool.query("SELECT COUNT(*) AS count FROM products");
+  const categoryCount = await pool.query("SELECT COUNT(*) AS count FROM categories");
+  const orderCount = await pool.query("SELECT COUNT(*) AS count FROM orders");
+  const pendingOrders = await pool.query(
+    "SELECT COUNT(*) AS count FROM orders WHERE status = 'Pending'"
+  );
+  const sales = await pool.query(
+    "SELECT COALESCE(SUM(total), 0) AS total FROM orders WHERE status != 'Cancelled'"
+  );
+  const lowStock = await pool.query(
+    "SELECT COUNT(*) AS count FROM products WHERE stock <= 5"
+  );
 
   res.json({
     success: true,
     dashboard: {
-      products: productCount,
-      categories: categoryCount,
-      orders: orderCount,
-      pendingOrders,
-      sales,
-      lowStock
+      products: Number(productCount.rows[0].count),
+      categories: Number(categoryCount.rows[0].count),
+      orders: Number(orderCount.rows[0].count),
+      pendingOrders: Number(pendingOrders.rows[0].count),
+      sales: Number(sales.rows[0].total),
+      lowStock: Number(lowStock.rows[0].count)
     }
   });
 });
 
 // PRODUCTS
-app.get("/api/products", (req, res) => {
-  const products = db
-    .prepare("SELECT * FROM products ORDER BY id DESC")
-    .all();
+app.get("/api/products", async (req, res) => {
+  // Explicit no-cache: guarantees the storefront never gets served a stale
+  // copy of the product list by a browser or intermediate cache/proxy.
+  res.set("Cache-Control", "no-store");
 
-  res.json(products);
+  const result = await pool.query("SELECT * FROM products ORDER BY id DESC");
+  res.json(result.rows);
 });
 
 // SINGLE PRODUCT
-app.get("/api/products/:id", (req, res) => {
-  const product = db
-    .prepare("SELECT * FROM products WHERE id = ?")
-    .get(req.params.id);
+app.get("/api/products/:id", async (req, res) => {
+  res.set("Cache-Control", "no-store");
+
+  const result = await pool.query(
+    "SELECT * FROM products WHERE id = $1",
+    [req.params.id]
+  );
+  const product = result.rows[0];
 
   if (!product) {
     return res.status(404).json({
@@ -418,7 +421,7 @@ app.get("/api/products/:id", (req, res) => {
 });
 
 // ADD PRODUCT
-app.post("/api/products", authenticateAdmin, (req, res) => {
+app.post("/api/products", authenticateAdmin, async (req, res) => {
   const {
     name,
     description = "",
@@ -438,37 +441,35 @@ app.post("/api/products", authenticateAdmin, (req, res) => {
     });
   }
 
-  const result = db.prepare(`
-    INSERT INTO products
-    (name, description, price, stock, category, image, image_back, image_side, image_closeup, featured)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-  `).run(
-    name,
-    description,
-    Number(price),
-    Number(stock),
-    category,
-    image,
-    image_back,
-    image_side,
-    image_closeup,
-    featured ? 1 : 0
+  const result = await pool.query(
+    `INSERT INTO products
+     (name, description, price, stock, category, image, image_back, image_side, image_closeup, featured)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+     RETURNING *`,
+    [
+      name,
+      description,
+      Number(price),
+      Number(stock),
+      category,
+      image,
+      image_back,
+      image_side,
+      image_closeup,
+      featured ? 1 : 0
+    ]
   );
 
-  ensureCategoryExists(category);
-
-  const product = db
-    .prepare("SELECT * FROM products WHERE id = ?")
-    .get(result.lastInsertRowid);
+  await ensureCategoryExists(category);
 
   res.status(201).json({
     success: true,
-    product
+    product: result.rows[0]
   });
 });
 
 // UPDATE PRODUCT
-app.put("/api/products/:id", authenticateAdmin, (req, res) => {
+app.put("/api/products/:id", authenticateAdmin, async (req, res) => {
   const {
     name,
     description = "",
@@ -482,64 +483,64 @@ app.put("/api/products/:id", authenticateAdmin, (req, res) => {
     featured = 0
   } = req.body;
 
-  const existing = db
-    .prepare("SELECT id FROM products WHERE id = ?")
-    .get(req.params.id);
+  const existing = await pool.query(
+    "SELECT id FROM products WHERE id = $1",
+    [req.params.id]
+  );
 
-  if (!existing) {
+  if (existing.rows.length === 0) {
     return res.status(404).json({
       error: "Product not found"
     });
   }
 
-  db.prepare(`
-    UPDATE products
-    SET
-      name = ?,
-      description = ?,
-      price = ?,
-      stock = ?,
-      category = ?,
-      image = ?,
-      image_back = ?,
-      image_side = ?,
-      image_closeup = ?,
-      featured = ?,
-      updated_at = CURRENT_TIMESTAMP
-    WHERE id = ?
-  `).run(
-    name,
-    description,
-    Number(price),
-    Number(stock),
-    category,
-    image,
-    image_back,
-    image_side,
-    image_closeup,
-    featured ? 1 : 0,
-    req.params.id
+  const result = await pool.query(
+    `UPDATE products
+     SET
+       name = $1,
+       description = $2,
+       price = $3,
+       stock = $4,
+       category = $5,
+       image = $6,
+       image_back = $7,
+       image_side = $8,
+       image_closeup = $9,
+       featured = $10,
+       updated_at = CURRENT_TIMESTAMP
+     WHERE id = $11
+     RETURNING *`,
+    [
+      name,
+      description,
+      Number(price),
+      Number(stock),
+      category,
+      image,
+      image_back,
+      image_side,
+      image_closeup,
+      featured ? 1 : 0,
+      req.params.id
+    ]
   );
 
-  ensureCategoryExists(category);
-
-  const product = db
-    .prepare("SELECT * FROM products WHERE id = ?")
-    .get(req.params.id);
+  await ensureCategoryExists(category);
 
   res.json({
     success: true,
-    product
+    product: result.rows[0]
   });
 });
 
 // DELETE PRODUCT
-app.delete("/api/products/:id", authenticateAdmin, (req, res) => {
-  const result = db
-    .prepare("DELETE FROM products WHERE id = ?")
-    .run(req.params.id);
+app.delete("/api/products/:id", authenticateAdmin, async (req, res) => {
+  const result = await pool.query(
+    "DELETE FROM products WHERE id = $1",
+    [req.params.id]
+  );
 
-  if (result.changes === 0) {
+  if (result.rowCount === 0) {
     return res.status(404).json({
       error: "Product not found"
     });
@@ -552,16 +553,15 @@ app.delete("/api/products/:id", authenticateAdmin, (req, res) => {
 });
 
 // CATEGORIES
-app.get("/api/categories", (req, res) => {
-  const categories = db
-    .prepare("SELECT * FROM categories ORDER BY name ASC")
-    .all();
+app.get("/api/categories", async (req, res) => {
+  res.set("Cache-Control", "no-store");
 
-  res.json(categories);
+  const result = await pool.query("SELECT * FROM categories ORDER BY name ASC");
+  res.json(result.rows);
 });
 
 // ADD CATEGORY
-app.post("/api/categories", authenticateAdmin, (req, res) => {
+app.post("/api/categories", authenticateAdmin, async (req, res) => {
   const { name } = req.body;
 
   if (!name) {
@@ -571,32 +571,33 @@ app.post("/api/categories", authenticateAdmin, (req, res) => {
   }
 
   try {
-    const result = db
-      .prepare("INSERT INTO categories (name) VALUES (?)")
-      .run(name.trim());
-
-    const category = db
-      .prepare("SELECT * FROM categories WHERE id = ?")
-      .get(result.lastInsertRowid);
+    const result = await pool.query(
+      "INSERT INTO categories (name) VALUES ($1) RETURNING *",
+      [name.trim()]
+    );
 
     res.status(201).json({
       success: true,
-      category
+      category: result.rows[0]
     });
   } catch (error) {
-    res.status(409).json({
-      error: "Category already exists"
-    });
+    if (error.code === "23505") { // unique_violation
+      return res.status(409).json({
+        error: "Category already exists"
+      });
+    }
+    throw error;
   }
 });
 
 // DELETE CATEGORY
-app.delete("/api/categories/:id", authenticateAdmin, (req, res) => {
-  const result = db
-    .prepare("DELETE FROM categories WHERE id = ?")
-    .run(req.params.id);
+app.delete("/api/categories/:id", authenticateAdmin, async (req, res) => {
+  const result = await pool.query(
+    "DELETE FROM categories WHERE id = $1",
+    [req.params.id]
+  );
 
-  if (result.changes === 0) {
+  if (result.rowCount === 0) {
     return res.status(404).json({
       error: "Category not found"
     });
@@ -609,13 +610,11 @@ app.delete("/api/categories/:id", authenticateAdmin, (req, res) => {
 });
 
 // ORDERS
-app.get("/api/orders", authenticateAdmin, (req, res) => {
-  const orders = db
-    .prepare("SELECT * FROM orders ORDER BY id DESC")
-    .all();
+app.get("/api/orders", authenticateAdmin, async (req, res) => {
+  const result = await pool.query("SELECT * FROM orders ORDER BY id DESC");
 
   res.json(
-    orders.map(order => ({
+    result.rows.map(order => ({
       ...order,
       items: JSON.parse(order.items)
     }))
@@ -623,7 +622,7 @@ app.get("/api/orders", authenticateAdmin, (req, res) => {
 });
 
 // CREATE ORDER
-app.post("/api/orders", (req, res) => {
+app.post("/api/orders", async (req, res) => {
   const {
     customer_name,
     customer_phone = "",
@@ -645,75 +644,72 @@ app.post("/api/orders", (req, res) => {
   }
 
   // Validate stock availability up front so nothing can be ordered beyond
-  // what's actually in stock. This runs inside the same transaction as the
-  // insert/decrement below so it can't race with another order.
-  let stockError = null;
-
-  const createOrder = db.transaction(() => {
-    const getStock = db.prepare("SELECT id, name, stock FROM products WHERE id = ?");
+  // what's actually in stock. Runs inside a real Postgres transaction (via
+  // a single dedicated client) so it can't race with another order.
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN");
 
     for (const item of items) {
       if (!item || !item.id) {
-        stockError = "Invalid item in order";
-        return null;
+        throw Object.assign(new Error("Invalid item in order"), { statusCode: 400 });
       }
-      const product = getStock.get(item.id);
+
+      const productResult = await client.query(
+        "SELECT id, name, stock FROM products WHERE id = $1 FOR UPDATE",
+        [item.id]
+      );
+      const product = productResult.rows[0];
       const qty = Number(item.qty || item.quantity || 1);
 
       if (!product) {
-        stockError = `Product #${item.id} no longer exists`;
-        return null;
+        throw Object.assign(new Error(`Product #${item.id} no longer exists`), { statusCode: 409 });
       }
       if (qty <= 0) {
-        stockError = `Invalid quantity for ${product.name}`;
-        return null;
+        throw Object.assign(new Error(`Invalid quantity for ${product.name}`), { statusCode: 400 });
       }
       if (product.stock < qty) {
-        stockError = `Only ${product.stock} left in stock for "${product.name}" (requested ${qty})`;
-        return null;
+        throw Object.assign(
+          new Error(`Only ${product.stock} left in stock for "${product.name}" (requested ${qty})`),
+          { statusCode: 409 }
+        );
       }
     }
 
-    const result = db.prepare(`
-      INSERT INTO orders
-      (customer_name, customer_phone, customer_address, items, total)
-      VALUES (?, ?, ?, ?, ?)
-    `).run(
-      customer_name,
-      customer_phone,
-      customer_address,
-      JSON.stringify(items),
-      Number(total)
+    const orderResult = await client.query(
+      `INSERT INTO orders (customer_name, customer_phone, customer_address, items, total)
+       VALUES ($1, $2, $3, $4, $5)
+       RETURNING id`,
+      [customer_name, customer_phone, customer_address, JSON.stringify(items), Number(total)]
     );
 
-    const decrementStock = db.prepare(`
-      UPDATE products
-      SET stock = stock - ?, updated_at = CURRENT_TIMESTAMP
-      WHERE id = ?
-    `);
+    for (const item of items) {
+      const qty = Number(item.qty || item.quantity || 1);
+      await client.query(
+        "UPDATE products SET stock = stock - $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2",
+        [qty, item.id]
+      );
+    }
 
-    items.forEach(item => {
-      decrementStock.run(Number(item.qty || item.quantity || 1), item.id);
+    await client.query("COMMIT");
+
+    res.status(201).json({
+      success: true,
+      orderId: orderResult.rows[0].id,
+      message: "Order created successfully"
     });
-
-    return result.lastInsertRowid;
-  });
-
-  const orderId = createOrder();
-
-  if (stockError) {
-    return res.status(409).json({ error: stockError });
+  } catch (err) {
+    await client.query("ROLLBACK");
+    const status = err.statusCode || 500;
+    res.status(status).json({ error: err.statusCode ? err.message : "Could not create order" });
+    if (!err.statusCode) console.error("Order creation failed:", err);
+  } finally {
+    client.release();
   }
-
-  res.status(201).json({
-    success: true,
-    orderId,
-    message: "Order created successfully"
-  });
 });
 
 // UPDATE ORDER STATUS
-app.patch("/api/orders/:id/status", authenticateAdmin, (req, res) => {
+app.patch("/api/orders/:id/status", authenticateAdmin, async (req, res) => {
   const { status } = req.body;
 
   const allowedStatuses = [
@@ -731,13 +727,12 @@ app.patch("/api/orders/:id/status", authenticateAdmin, (req, res) => {
     });
   }
 
-  const result = db.prepare(`
-    UPDATE orders
-    SET status = ?, updated_at = CURRENT_TIMESTAMP
-    WHERE id = ?
-  `).run(status, req.params.id);
+  const result = await pool.query(
+    "UPDATE orders SET status = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2",
+    [status, req.params.id]
+  );
 
-  if (result.changes === 0) {
+  if (result.rowCount === 0) {
     return res.status(404).json({
       error: "Order not found"
     });
@@ -750,12 +745,13 @@ app.patch("/api/orders/:id/status", authenticateAdmin, (req, res) => {
 });
 
 // DELETE ORDER
-app.delete("/api/orders/:id", authenticateAdmin, (req, res) => {
-  const result = db
-    .prepare("DELETE FROM orders WHERE id = ?")
-    .run(req.params.id);
+app.delete("/api/orders/:id", authenticateAdmin, async (req, res) => {
+  const result = await pool.query(
+    "DELETE FROM orders WHERE id = $1",
+    [req.params.id]
+  );
 
-  if (result.changes === 0) {
+  if (result.rowCount === 0) {
     return res.status(404).json({
       error: "Order not found"
     });
@@ -770,18 +766,36 @@ app.delete("/api/orders/:id", authenticateAdmin, (req, res) => {
 // Serve BIGTECH website
 app.use(express.static(__dirname));
 
-// Start server
-app.listen(PORT, () => {
-  console.log("");
-  console.log("==================================");
-  console.log("       BIGTECH SERVER RUNNING");
-  console.log("==================================");
-  console.log(`Website: http://localhost:${PORT}`);
-  console.log(`API:     http://localhost:${PORT}/api/health`);
-  if (!process.env.JWT_SECRET) {
-    console.log("");
-    console.log("WARNING: JWT_SECRET is not set in .env — using an insecure");
-    console.log("         default. Set JWT_SECRET before deploying this site.");
-  }
-  console.log("");
+// Catch anything an async route handler above threw and didn't handle
+// itself, so the client always gets a clean JSON error instead of an
+// Express HTML error page.
+app.use((err, req, res, next) => {
+  console.error("Unhandled error:", err);
+  if (res.headersSent) return next(err);
+  res.status(500).json({ error: "Something went wrong on the server." });
 });
+
+// Start server — but only after the database schema is ready, so no
+// request can ever race against tables that don't exist yet.
+initSchema()
+  .then(() => {
+    app.listen(PORT, () => {
+      console.log("");
+      console.log("==================================");
+      console.log("       BIGTECH SERVER RUNNING");
+      console.log("==================================");
+      console.log(`Website: http://localhost:${PORT}`);
+      console.log(`API:     http://localhost:${PORT}/api/health`);
+      console.log(`Database: connected (persistent Postgres)`);
+      if (!process.env.JWT_SECRET) {
+        console.log("");
+        console.log("WARNING: JWT_SECRET is not set in .env — using an insecure");
+        console.log("         default. Set JWT_SECRET before deploying this site.");
+      }
+      console.log("");
+    });
+  })
+  .catch(err => {
+    console.error("FATAL: could not set up the database schema:", err);
+    process.exit(1);
+  });
