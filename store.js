@@ -206,7 +206,10 @@
         continue;
       }
 
-      const bulletMatch = line.match(/^[*-]\s+(.+)$/);
+      // Recognizes "* item", "- item", and "• item" (a literal bullet
+      // character, which is what admins get if they copy/paste bulleted
+      // text from Word, Notes, WhatsApp, etc.) as list items.
+      const bulletMatch = line.match(/^[*•\u2022-]\s+(.+)$/);
       if (bulletMatch) {
         flushPara();
         listBuffer.push(bulletMatch[1]);

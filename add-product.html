@@ -385,7 +385,7 @@
       ></textarea>
       <div class="hint">
         Formatting: start a line with <strong>##</strong> for a section heading (e.g. <strong>## Specifications</strong>),
-        start a line with <strong>*</strong> for a bullet point (e.g. <strong>* Brand: Sony</strong> — the label before
+        start a line with <strong>*</strong> or <strong>•</strong> for a bullet point (e.g. <strong>* Brand: Sony</strong> — the label before
         the colon is bolded automatically), wrap text in <strong>**double asterisks**</strong> to bold it, and leave a
         blank line between paragraphs. No <strong>&lt;/&gt;</strong> HTML needed — this is converted automatically on
         the product page.
@@ -1026,7 +1026,7 @@
           continue;
         }
 
-        const bulletMatch = line.match(/^[*-]\s+(.+)$/);
+        const bulletMatch = line.match(/^[*•\u2022-]\s+(.+)$/);
         if (bulletMatch) { flushPara(); listBuffer.push(bulletMatch[1]); continue; }
 
         flushList();
