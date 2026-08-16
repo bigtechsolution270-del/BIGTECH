@@ -147,6 +147,81 @@
     return String(str ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
   }
 
+  // ---------- product description formatting ----------
+  // Turns the plain text an admin types into the description textarea into
+  // clean, safe HTML: "## Heading" -> <h3>, "### Heading" -> <h4>, lines
+  // starting with "* " or "- " -> a <ul><li>, blank lines separate
+  // paragraphs, and **bold** (or a bare "Label: value" bullet) becomes
+  // <strong>. Every character of the admin's text is HTML-escaped BEFORE
+  // any of these rules run, so the admin can never inject real markup —
+  // only the tags this function itself adds ever reach the page.
+  function inlineFormat(escapedLine) {
+    return escapedLine.replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>");
+  }
+
+  function formatDescription(raw) {
+    const text = String(raw ?? "").trim();
+    if (!text) return "";
+
+    const escaped = escapeHtml(text);
+    const lines = escaped.split(/\r?\n/);
+
+    const htmlParts = [];
+    let listBuffer = [];
+    let paraBuffer = [];
+
+    function flushList() {
+      if (!listBuffer.length) return;
+      const items = listBuffer.map(item => {
+        let formatted = inlineFormat(item);
+        if (!formatted.includes("<strong>")) {
+          // Auto-bold a short "Label: value" prefix so bullets like
+          // "Brand: Sony" read the same as an explicitly bolded one,
+          // without the admin having to type ** themselves.
+          const m = formatted.match(/^([^:]{1,40}):\s*(.+)$/);
+          if (m) formatted = `<strong>${m[1]}:</strong> ${m[2]}`;
+        }
+        return `<li>${formatted}</li>`;
+      }).join("");
+      htmlParts.push(`<ul>${items}</ul>`);
+      listBuffer = [];
+    }
+
+    function flushPara() {
+      if (!paraBuffer.length) return;
+      htmlParts.push(`<p>${inlineFormat(paraBuffer.join(" "))}</p>`);
+      paraBuffer = [];
+    }
+
+    for (const rawLine of lines) {
+      const line = rawLine.trim();
+
+      if (!line) { flushList(); flushPara(); continue; }
+
+      const headingMatch = line.match(/^(#{2,3})\s+(.+)$/);
+      if (headingMatch) {
+        flushList(); flushPara();
+        const level = headingMatch[1].length === 2 ? "h3" : "h4";
+        htmlParts.push(`<${level}>${inlineFormat(headingMatch[2])}</${level}>`);
+        continue;
+      }
+
+      const bulletMatch = line.match(/^[*-]\s+(.+)$/);
+      if (bulletMatch) {
+        flushPara();
+        listBuffer.push(bulletMatch[1]);
+        continue;
+      }
+
+      flushList();
+      paraBuffer.push(line);
+    }
+    flushList();
+    flushPara();
+
+    return htmlParts.join("");
+  }
+
   // Product card: image, name and price only — the whole card is a single
   // link to the product page. No buttons live inside the card itself.
   function productCard(p) {
@@ -343,7 +418,10 @@
 
     document.querySelectorAll("[data-product-name]").forEach(e => e.textContent = p.name);
     document.querySelectorAll("[data-product-price]").forEach(e => e.textContent = money(p.price));
-    document.querySelectorAll("[data-product-desc]").forEach(e => e.textContent = p.description || `Genuine ${p.name} from BIGTECH. Door-to-door delivery is available, with free delivery around Managua. Contact +505 7890 4496 for availability and order confirmation.`);
+    document.querySelectorAll("[data-product-desc]").forEach(e => {
+      const formatted = formatDescription(p.description);
+      e.innerHTML = formatted || `<p>Genuine ${escapeHtml(p.name)} from BIGTECH. Door-to-door delivery is available, with free delivery around Managua. Contact +505 7890 4496 for availability and order confirmation.</p>`;
+    });
     document.querySelectorAll("[data-product-category]").forEach(e => { e.textContent = p.category || "BIGTECH"; e.href = `category.html?category=${encodeURIComponent(p.category || "")}`; });
     document.querySelectorAll("[data-product-brand]").forEach(e => { e.textContent = brandFor(p); });
     document.querySelectorAll("[data-product-stock]").forEach(e => {
@@ -526,5 +604,5 @@
     document.querySelectorAll(".cart-link").forEach(b => b.onclick = e => { e.preventDefault(); location.href = "cart.html"; });
   });
 
-  window.BIGTECH = { add, remove, change, toggleWish, money, loadProducts };
+  window.BIGTECH = { add, remove, change, toggleWish, money, loadProducts, formatDescription };
 })();

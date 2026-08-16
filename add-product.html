@@ -380,9 +380,20 @@
       <textarea
         id="description"
         name="description"
-        placeholder="Enter product description"
+        placeholder="Enter product description. Use ## Heading for a section title, lines starting with * for a bullet list, and **word** for bold. Leave a blank line between paragraphs."
         required
       ></textarea>
+      <div class="hint">
+        Formatting: start a line with <strong>##</strong> for a section heading (e.g. <strong>## Specifications</strong>),
+        start a line with <strong>*</strong> for a bullet point (e.g. <strong>* Brand: Sony</strong> — the label before
+        the colon is bolded automatically), wrap text in <strong>**double asterisks**</strong> to bold it, and leave a
+        blank line between paragraphs. No <strong>&lt;/&gt;</strong> HTML needed — this is converted automatically on
+        the product page.
+      </div>
+      <div id="descriptionPreviewWrap" style="margin-top:10px;border:1px solid #ddd;border-radius:8px;padding:14px 16px;background:#fafafa;display:none">
+        <div style="font-size:11px;font-weight:bold;letter-spacing:.04em;color:#888;text-transform:uppercase;margin-bottom:8px">Preview</div>
+        <div id="descriptionPreview" style="line-height:1.6;color:#222"></div>
+      </div>
 
       <label for="price">Price</label>
       <input
@@ -857,6 +868,7 @@
 
         document.getElementById("name").value = product.name || "";
         document.getElementById("description").value = product.description || "";
+        document.getElementById("description").dispatchEvent(new Event("input"));
         document.getElementById("price").value = product.price ?? "";
         document.getElementById("stock").value = product.stock ?? "";
         document.getElementById("category").value = product.category || "";
@@ -961,6 +973,87 @@
       div.textContent = value;
       return div.innerHTML;
     }
+
+    // Live preview of the formatted description, mirroring exactly how
+    // store.js renders it on the real product page (## heading, * bullet,
+    // **bold**, blank line = new paragraph). Kept self-contained here
+    // rather than importing store.js, since this admin page loads no
+    // other frontend scripts.
+    function inlineFormatPreview(escapedLine) {
+      return escapedLine.replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>");
+    }
+
+    function formatDescriptionPreview(raw) {
+      const text = String(raw ?? "").trim();
+      if (!text) return "";
+
+      const escaped = escapeHtml(text);
+      const lines = escaped.split(/\r?\n/);
+      const htmlParts = [];
+      let listBuffer = [];
+      let paraBuffer = [];
+
+      function flushList() {
+        if (!listBuffer.length) return;
+        const items = listBuffer.map(item => {
+          let formatted = inlineFormatPreview(item);
+          if (!formatted.includes("<strong>")) {
+            const m = formatted.match(/^([^:]{1,40}):\s*(.+)$/);
+            if (m) formatted = `<strong>${m[1]}:</strong> ${m[2]}`;
+          }
+          return `<li>${formatted}</li>`;
+        }).join("");
+        htmlParts.push(`<ul style="margin:6px 0 14px;padding-left:20px">${items}</ul>`);
+        listBuffer = [];
+      }
+
+      function flushPara() {
+        if (!paraBuffer.length) return;
+        htmlParts.push(`<p style="margin:0 0 10px">${inlineFormatPreview(paraBuffer.join(" "))}</p>`);
+        paraBuffer = [];
+      }
+
+      for (const rawLine of lines) {
+        const line = rawLine.trim();
+        if (!line) { flushList(); flushPara(); continue; }
+
+        const headingMatch = line.match(/^(#{2,3})\s+(.+)$/);
+        if (headingMatch) {
+          flushList(); flushPara();
+          const level = headingMatch[1].length === 2 ? "h3" : "h4";
+          const size = level === "h3" ? "15px" : "13.5px";
+          htmlParts.push(`<${level} style="margin:14px 0 6px;font-size:${size}">${inlineFormatPreview(headingMatch[2])}</${level}>`);
+          continue;
+        }
+
+        const bulletMatch = line.match(/^[*-]\s+(.+)$/);
+        if (bulletMatch) { flushPara(); listBuffer.push(bulletMatch[1]); continue; }
+
+        flushList();
+        paraBuffer.push(line);
+      }
+      flushList();
+      flushPara();
+
+      return htmlParts.join("");
+    }
+
+    (function wireDescriptionPreview() {
+      const textarea = document.getElementById("description");
+      const wrap = document.getElementById("descriptionPreviewWrap");
+      const preview = document.getElementById("descriptionPreview");
+      if (!textarea || !wrap || !preview) return;
+
+      function update() {
+        const html = formatDescriptionPreview(textarea.value);
+        if (!html) { wrap.style.display = "none"; return; }
+        preview.innerHTML = html;
+        wrap.style.display = "block";
+      }
+
+      textarea.addEventListener("input", update);
+      update();
+    })();
   </script>
 
 </body>

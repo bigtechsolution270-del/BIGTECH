@@ -202,8 +202,14 @@ main.wrap{padding-top:28px;padding-bottom:80px}
 .tab-buttons{display:flex;gap:6px;border-bottom:1px solid var(--line)}
 .tab-btn{background:transparent;border:0;padding:14px 20px;font-weight:700;font-size:13.5px;color:var(--muted);border-bottom:2px solid transparent;margin-bottom:-1px}
 .tab-btn.active{color:var(--accent);border-bottom-color:var(--accent)}
-.tab-panel{padding:26px 4px;color:var(--muted);line-height:1.7;max-width:760px}
-.tab-panel h2,.tab-panel h3{color:var(--text);margin:18px 0 10px;font-size:18px}
+.tab-panel{padding:26px 4px;color:var(--muted);line-height:1.7;max-width:760px;overflow-wrap:break-word;word-break:break-word}
+.tab-panel h2,.tab-panel h3{color:var(--text);margin:22px 0 10px;font-size:18px}
+.tab-panel h4{color:var(--text);margin:16px 0 8px;font-size:15px}
+.tab-panel p{margin:0 0 14px}
+.tab-panel ul{margin:6px 0 18px;padding-left:22px}
+.tab-panel li{margin:6px 0}
+.tab-panel strong{color:var(--text);font-weight:700}
+.tab-panel > :first-child,.tab-panel [data-product-desc] > :first-child{margin-top:0}
 .tab-panel[hidden]{display:none}
 .reviews-empty{color:var(--faint);font-size:13px}
 
