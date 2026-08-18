@@ -3,15 +3,6 @@
    the cart (localStorage), search, filtering, and rendering used by
    index.html, category.html, product.html, cart.html and checkout.html. */
 (() => {
-  // Multi-page site (no client-side router), so every navigation is a real
-  // page load — EXCEPT when a mobile browser restores a page from its
-  // back/forward cache (bfcache) instead of reloading it. That restore
-  // replays the exact DOM as it was rendered before, which is how a user
-  // could land on a category URL whose heading/products belong to a
-  // different, earlier visit. Forcing a real reload on any bfcache restore
-  // guarantees the page always reflects the URL it's actually showing.
-  window.addEventListener("pageshow", e => { if (e.persisted) location.reload(); });
-
   const API = "/api/products";
   const CART_KEY = "bigtech_cart";
   const WISH_KEY = "bigtech_wishlist";
@@ -426,7 +417,6 @@
     }
 
     document.title = `BIGTECH | ${p.name}`;
-    document.querySelectorAll("[data-product-title]").forEach(e => e.textContent = `BIGTECH | ${p.name}`);
     const outOfStock = p.stock !== undefined && Number(p.stock) <= 0;
 
     document.querySelectorAll("[data-product-name]").forEach(e => e.textContent = p.name);
@@ -441,33 +431,12 @@
       e.innerHTML = outOfStock ? "Out of stock" : `<span class="dot"></span> In stock${p.stock ? ` (${p.stock} left)` : ""}`;
       e.classList.toggle("stock", !outOfStock);
     });
-
-    // SEO: give the product page a meta description tied to this specific
-    // product rather than the generic storefront copy.
-    const metaDesc = document.querySelector("[data-product-meta-desc]");
-    if (metaDesc) {
-      const plainDesc = String(p.description || "").replace(/\s+/g, " ").trim();
-      const snippet = plainDesc ? plainDesc.slice(0, 155) : `${p.name} at BIGTECH — genuine products with free delivery around Managua, Nicaragua.`;
-      metaDesc.setAttribute("content", snippet);
-    }
-
     renderGallery(p);
-    renderHighlights(p);
-    renderRelated(p);
 
     document.querySelectorAll("[data-add-product]").forEach(b => {
       b.disabled = outOfStock;
       b.textContent = outOfStock ? "Out of stock" : "Add to cart";
       b.onclick = () => add(p.id, getQty());
-    });
-
-    document.querySelectorAll("[data-buy-now]").forEach(b => {
-      b.disabled = outOfStock;
-      b.textContent = outOfStock ? "Out of stock" : "Buy it now";
-      b.onclick = () => {
-        add(p.id, getQty());
-        location.href = "checkout.html";
-      };
     });
 
     function getQty() {
@@ -487,37 +456,6 @@
         });
       });
     });
-  }
-
-  // A short strip of real, data-backed facts about the product (not
-  // invented specs) — category, brand, stock status, and delivery — shown
-  // as small cards above the title so the page reads as more than a bare
-  // name-and-price block.
-  function renderHighlights(p) {
-    const el = document.querySelector("[data-product-highlights]");
-    if (!el) return;
-    const outOfStock = p.stock !== undefined && Number(p.stock) <= 0;
-    const cards = [
-      { value: p.category || "BIGTECH", label: "Category" },
-      { value: brandFor(p), label: "Brand" },
-      { value: outOfStock ? "Out of stock" : "In stock", label: "Availability" },
-      { value: "Managua", label: "Free delivery" }
-    ];
-    el.innerHTML = cards.map(c => `<div class="highlight-card"><strong>${escapeHtml(c.value)}</strong><span>${escapeHtml(c.label)}</span></div>`).join("");
-    el.hidden = false;
-  }
-
-  // "You may also like": up to 4 other products in the same category.
-  function renderRelated(p) {
-    const section = document.querySelector("[data-related-section]");
-    const root = document.querySelector("[data-related-root]");
-    if (!section || !root) return;
-    const related = products
-      .filter(x => String(x.id) !== String(p.id) && (x.category || "") === (p.category || "") && (p.category || ""))
-      .slice(0, 4);
-    if (!related.length) { section.hidden = true; return; }
-    root.innerHTML = related.map(productCard).join("");
-    section.hidden = false;
   }
 
   // ---------- cart page ----------
