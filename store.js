@@ -3,6 +3,15 @@
    the cart (localStorage), search, filtering, and rendering used by
    index.html, category.html, product.html, cart.html and checkout.html. */
 (() => {
+  // Multi-page site (no client-side router), so every navigation is a real
+  // page load — EXCEPT when a mobile browser restores a page from its
+  // back/forward cache (bfcache) instead of reloading it. That restore
+  // replays the exact DOM as it was rendered before, which is how a user
+  // could land on a category URL whose heading/products belong to a
+  // different, earlier visit. Forcing a real reload on any bfcache restore
+  // guarantees the page always reflects the URL it's actually showing.
+  window.addEventListener("pageshow", e => { if (e.persisted) location.reload(); });
+
   const API = "/api/products";
   const CART_KEY = "bigtech_cart";
   const WISH_KEY = "bigtech_wishlist";
@@ -49,13 +58,17 @@
     document.querySelectorAll("[data-wishlist-count]").forEach(el => el.textContent = wishlist.length);
   }
 
-  function add(id, qty = 1) {
+  function add(id, qty = 1, variantSummary = "") {
     const p = find(id);
     if (!p) return;
     if (p.stock !== undefined && p.stock <= 0) { toast("Sorry, this item is out of stock"); return; }
     const row = cart.find(x => String(x.id) === String(id));
     const currentQty = row ? row.qty : 0;
     const maxAllowed = p.stock !== undefined ? Number(p.stock) : Infinity;
+    // Any selected variant (Storage/Color) is purely informational and does
+    // NOT split the product into a separate cart row — the cart is still
+    // keyed by product id only, so re-adding the same product always
+    // updates its existing quantity instead of creating a duplicate entry.
 
     if (currentQty + qty > maxAllowed) {
       const remaining = Math.max(maxAllowed - currentQty, 0);
@@ -71,7 +84,7 @@
     if (row) row.qty += qty; else cart.push({ id, qty });
     save(CART_KEY, cart);
     updateBadges();
-    toast(`${p.name} added to cart`);
+    toast(variantSummary ? `${p.name} (${variantSummary}) added to cart` : `${p.name} added to cart`);
   }
 
   function remove(id) {
@@ -417,6 +430,7 @@
     }
 
     document.title = `BIGTECH | ${p.name}`;
+    document.querySelectorAll("[data-product-title]").forEach(e => e.textContent = `BIGTECH | ${p.name}`);
     const outOfStock = p.stock !== undefined && Number(p.stock) <= 0;
 
     document.querySelectorAll("[data-product-name]").forEach(e => e.textContent = p.name);
@@ -431,12 +445,34 @@
       e.innerHTML = outOfStock ? "Out of stock" : `<span class="dot"></span> In stock${p.stock ? ` (${p.stock} left)` : ""}`;
       e.classList.toggle("stock", !outOfStock);
     });
+
+    // SEO: give the product page a meta description tied to this specific
+    // product rather than the generic storefront copy.
+    const metaDesc = document.querySelector("[data-product-meta-desc]");
+    if (metaDesc) {
+      const plainDesc = String(p.description || "").replace(/\s+/g, " ").trim();
+      const snippet = plainDesc ? plainDesc.slice(0, 155) : `${p.name} at BIGTECH — genuine products with free delivery around Managua, Nicaragua.`;
+      metaDesc.setAttribute("content", snippet);
+    }
+
     renderGallery(p);
+    renderVariants(p);
+    renderHighlights(p);
+    renderRelated(p);
 
     document.querySelectorAll("[data-add-product]").forEach(b => {
       b.disabled = outOfStock;
       b.textContent = outOfStock ? "Out of stock" : "Add to cart";
-      b.onclick = () => add(p.id, getQty());
+      b.onclick = () => add(p.id, getQty(), selectedVariantSummary());
+    });
+
+    document.querySelectorAll("[data-buy-now]").forEach(b => {
+      b.disabled = outOfStock;
+      b.textContent = outOfStock ? "Out of stock" : "Buy it now";
+      b.onclick = () => {
+        add(p.id, getQty());
+        location.href = "checkout.html";
+      };
     });
 
     function getQty() {
@@ -456,6 +492,105 @@
         });
       });
     });
+  }
+
+  // A short strip of real, data-backed facts about the product (not
+  // invented specs) — category, brand, stock status, and delivery — shown
+  // as small cards above the title so the page reads as more than a bare
+  // name-and-price block.
+  // Storefront has no per-variant price/stock data (products only have a
+  // single price and stock count), so these are lightweight, informational
+  // option chips — not tied to inventory or pricing. They're parsed straight
+  // out of the description text, so any product typed in the normal
+  // "Label: option / option / option" style (e.g. "Storage: 128GB / 256GB")
+  // automatically gets clickable chips with no extra admin work and no
+  // database changes. Selecting a chip changes which one looks active and
+  // is included in the "added to cart" confirmation — it does not split the
+  // product into separate cart line items, so re-adding still just updates
+  // the existing quantity rather than creating duplicate rows.
+  const VARIANT_LABELS = ["storage", "color", "colour", "size", "ram", "capacity"];
+
+  function parseVariantGroups(rawDescription) {
+    const text = String(rawDescription ?? "");
+    const lines = text.split(/\r?\n/);
+    const groups = [];
+    for (const rawLine of lines) {
+      const line = rawLine.trim().replace(/^[*•\u2022-]\s+/, "");
+      const m = line.match(/^([A-Za-z ]{2,20}):\s*(.+)$/);
+      if (!m) continue;
+      const label = m[1].trim();
+      if (!VARIANT_LABELS.includes(label.toLowerCase())) continue;
+      const options = m[2].split("/").map(o => o.trim()).filter(Boolean);
+      if (options.length < 2) continue; // need at least 2 real choices to be a variant picker
+      groups.push({ label, options });
+    }
+    return groups;
+  }
+
+  function renderVariants(p) {
+    const el = document.querySelector("[data-product-variants]");
+    if (!el) return;
+    const groups = parseVariantGroups(p.description);
+    if (!groups.length) { el.hidden = true; el.innerHTML = ""; return; }
+
+    el.innerHTML = groups.map((g, gi) => `
+      <div class="pdp-variant-group">
+        <div class="pdp-variant-label">${escapeHtml(g.label)}</div>
+        <div class="pdp-variant-options" data-variant-group="${gi}">
+          ${g.options.map((opt, oi) => `<button type="button" class="pdp-variant-chip${oi === 0 ? " active" : ""}" data-variant-option="${escapeAttr(opt)}">${escapeHtml(opt)}</button>`).join("")}
+        </div>
+      </div>
+    `).join("");
+
+    el.querySelectorAll("[data-variant-group]").forEach(group => {
+      group.querySelectorAll(".pdp-variant-chip").forEach(chip => {
+        chip.addEventListener("click", () => {
+          group.querySelectorAll(".pdp-variant-chip").forEach(c => c.classList.remove("active"));
+          chip.classList.add("active");
+        });
+      });
+    });
+
+    el.hidden = false;
+  }
+
+  function selectedVariantSummary() {
+    const el = document.querySelector("[data-product-variants]");
+    if (!el || el.hidden) return "";
+    const parts = [];
+    el.querySelectorAll(".pdp-variant-group").forEach(group => {
+      const label = group.querySelector(".pdp-variant-label")?.textContent;
+      const active = group.querySelector(".pdp-variant-chip.active")?.dataset.variantOption;
+      if (label && active) parts.push(`${label}: ${active}`);
+    });
+    return parts.join(", ");
+  }
+
+  function renderHighlights(p) {
+    const el = document.querySelector("[data-product-highlights]");
+    if (!el) return;
+    const outOfStock = p.stock !== undefined && Number(p.stock) <= 0;
+    const cards = [
+      { value: p.category || "BIGTECH", label: "Category" },
+      { value: brandFor(p), label: "Brand" },
+      { value: outOfStock ? "Out of stock" : "In stock", label: "Availability" },
+      { value: "Managua", label: "Free delivery" }
+    ];
+    el.innerHTML = cards.map(c => `<div class="highlight-card"><strong>${escapeHtml(c.value)}</strong><span>${escapeHtml(c.label)}</span></div>`).join("");
+    el.hidden = false;
+  }
+
+  // "You may also like": up to 4 other products in the same category.
+  function renderRelated(p) {
+    const section = document.querySelector("[data-related-section]");
+    const root = document.querySelector("[data-related-root]");
+    if (!section || !root) return;
+    const related = products
+      .filter(x => String(x.id) !== String(p.id) && (x.category || "") === (p.category || "") && (p.category || ""))
+      .slice(0, 4);
+    if (!related.length) { section.hidden = true; return; }
+    root.innerHTML = related.map(productCard).join("");
+    section.hidden = false;
   }
 
   // ---------- cart page ----------
