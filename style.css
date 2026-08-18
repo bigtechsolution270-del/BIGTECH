@@ -30,9 +30,8 @@
 }
 
 *{box-sizing:border-box;margin:0;padding:0}
-html{scroll-behavior:smooth;overflow-x:hidden}
+html{scroll-behavior:smooth}
 body{
-  overflow-x:hidden;
   background:var(--bg);
   color:var(--text);
   font-family:var(--body);
@@ -199,15 +198,6 @@ main.wrap{padding-top:28px;padding-bottom:80px}
 .pdp-meta-row a{color:var(--accent)}
 .pdp-meta-row a:hover{color:var(--accent-dark)}
 .pdp-view-cart{margin-top:8px;font-size:13px}
-
-.pdp-variants{margin-bottom:18px}
-.pdp-variant-group{margin-bottom:14px}
-.pdp-variant-group:last-child{margin-bottom:0}
-.pdp-variant-label{font-size:12px;font-weight:700;color:var(--text);text-transform:uppercase;letter-spacing:.03em;margin-bottom:8px}
-.pdp-variant-options{display:flex;flex-wrap:wrap;gap:8px}
-.pdp-variant-chip{border:1px solid var(--line);border-radius:999px;padding:8px 16px;font-size:13px;font-weight:600;color:var(--text);background:#fff;cursor:pointer;transition:.15s}
-.pdp-variant-chip:hover{border-color:var(--accent)}
-.pdp-variant-chip.active{border-color:var(--accent);background:var(--accent);color:#fff}
 
 .pdp-highlights{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:20px}
 .highlight-card{border:1px solid var(--line);border-radius:var(--radius);padding:12px 10px;text-align:center;background:var(--panel2)}

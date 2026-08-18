@@ -58,17 +58,13 @@
     document.querySelectorAll("[data-wishlist-count]").forEach(el => el.textContent = wishlist.length);
   }
 
-  function add(id, qty = 1, variantSummary = "") {
+  function add(id, qty = 1) {
     const p = find(id);
     if (!p) return;
     if (p.stock !== undefined && p.stock <= 0) { toast("Sorry, this item is out of stock"); return; }
     const row = cart.find(x => String(x.id) === String(id));
     const currentQty = row ? row.qty : 0;
     const maxAllowed = p.stock !== undefined ? Number(p.stock) : Infinity;
-    // Any selected variant (Storage/Color) is purely informational and does
-    // NOT split the product into a separate cart row — the cart is still
-    // keyed by product id only, so re-adding the same product always
-    // updates its existing quantity instead of creating a duplicate entry.
 
     if (currentQty + qty > maxAllowed) {
       const remaining = Math.max(maxAllowed - currentQty, 0);
@@ -84,7 +80,7 @@
     if (row) row.qty += qty; else cart.push({ id, qty });
     save(CART_KEY, cart);
     updateBadges();
-    toast(variantSummary ? `${p.name} (${variantSummary}) added to cart` : `${p.name} added to cart`);
+    toast(`${p.name} added to cart`);
   }
 
   function remove(id) {
@@ -456,14 +452,13 @@
     }
 
     renderGallery(p);
-    renderVariants(p);
     renderHighlights(p);
     renderRelated(p);
 
     document.querySelectorAll("[data-add-product]").forEach(b => {
       b.disabled = outOfStock;
       b.textContent = outOfStock ? "Out of stock" : "Add to cart";
-      b.onclick = () => add(p.id, getQty(), selectedVariantSummary());
+      b.onclick = () => add(p.id, getQty());
     });
 
     document.querySelectorAll("[data-buy-now]").forEach(b => {
@@ -498,74 +493,6 @@
   // invented specs) — category, brand, stock status, and delivery — shown
   // as small cards above the title so the page reads as more than a bare
   // name-and-price block.
-  // Storefront has no per-variant price/stock data (products only have a
-  // single price and stock count), so these are lightweight, informational
-  // option chips — not tied to inventory or pricing. They're parsed straight
-  // out of the description text, so any product typed in the normal
-  // "Label: option / option / option" style (e.g. "Storage: 128GB / 256GB")
-  // automatically gets clickable chips with no extra admin work and no
-  // database changes. Selecting a chip changes which one looks active and
-  // is included in the "added to cart" confirmation — it does not split the
-  // product into separate cart line items, so re-adding still just updates
-  // the existing quantity rather than creating duplicate rows.
-  const VARIANT_LABELS = ["storage", "color", "colour", "size", "ram", "capacity"];
-
-  function parseVariantGroups(rawDescription) {
-    const text = String(rawDescription ?? "");
-    const lines = text.split(/\r?\n/);
-    const groups = [];
-    for (const rawLine of lines) {
-      const line = rawLine.trim().replace(/^[*•\u2022-]\s+/, "");
-      const m = line.match(/^([A-Za-z ]{2,20}):\s*(.+)$/);
-      if (!m) continue;
-      const label = m[1].trim();
-      if (!VARIANT_LABELS.includes(label.toLowerCase())) continue;
-      const options = m[2].split("/").map(o => o.trim()).filter(Boolean);
-      if (options.length < 2) continue; // need at least 2 real choices to be a variant picker
-      groups.push({ label, options });
-    }
-    return groups;
-  }
-
-  function renderVariants(p) {
-    const el = document.querySelector("[data-product-variants]");
-    if (!el) return;
-    const groups = parseVariantGroups(p.description);
-    if (!groups.length) { el.hidden = true; el.innerHTML = ""; return; }
-
-    el.innerHTML = groups.map((g, gi) => `
-      <div class="pdp-variant-group">
-        <div class="pdp-variant-label">${escapeHtml(g.label)}</div>
-        <div class="pdp-variant-options" data-variant-group="${gi}">
-          ${g.options.map((opt, oi) => `<button type="button" class="pdp-variant-chip${oi === 0 ? " active" : ""}" data-variant-option="${escapeAttr(opt)}">${escapeHtml(opt)}</button>`).join("")}
-        </div>
-      </div>
-    `).join("");
-
-    el.querySelectorAll("[data-variant-group]").forEach(group => {
-      group.querySelectorAll(".pdp-variant-chip").forEach(chip => {
-        chip.addEventListener("click", () => {
-          group.querySelectorAll(".pdp-variant-chip").forEach(c => c.classList.remove("active"));
-          chip.classList.add("active");
-        });
-      });
-    });
-
-    el.hidden = false;
-  }
-
-  function selectedVariantSummary() {
-    const el = document.querySelector("[data-product-variants]");
-    if (!el || el.hidden) return "";
-    const parts = [];
-    el.querySelectorAll(".pdp-variant-group").forEach(group => {
-      const label = group.querySelector(".pdp-variant-label")?.textContent;
-      const active = group.querySelector(".pdp-variant-chip.active")?.dataset.variantOption;
-      if (label && active) parts.push(`${label}: ${active}`);
-    });
-    return parts.join(", ");
-  }
-
   function renderHighlights(p) {
     const el = document.querySelector("[data-product-highlights]");
     if (!el) return;
